@@ -10,7 +10,7 @@ The system is composed of six primary subsystems that communicate through an int
 2. **Classifier** — Behavioral heuristic engine that labels time segments
 3. **Prediction Engine** — Local ML model that detects pre-distraction patterns
 4. **Productivity Ghost** — Overlay renderer for personal-best pace reference
-5. **Task Manager** — Gamified to-do list with XP, badges, and leaderboard
+5. **Task Manager** — Gamified to-do list with XP and badges
 6. **Calendar Sync** — Google Calendar API integration (opt-in)
 
 All subsystems read from and write to the **Local Store** — an AES-256 encrypted SQLite database stored on the user's device.
@@ -189,6 +189,8 @@ interface IPredictionEngine {
 **Confidence Threshold Management**: Each pattern key maintains its own threshold, initialized at 0.75. Dismissals increment by 0.05; acceptances decrement by 0.02 (floor 0.60, ceiling 0.95).
 
 ### Productivity Ghost
+
+> **Deferred feature** — implement after core tracking, classification, dashboard, and task management are stable.
 
 ```typescript
 interface PaceRecord {
@@ -577,7 +579,7 @@ CREATE TABLE pattern_thresholds (
 
 *For any* valid `Task` object (with non-empty title and valid priority), creating it via `createTask` and then querying `queryTasks` SHALL return a task with equivalent `title`, `priority`, `dueDate`, and `completed` fields.
 
-**Validates: Requirements 7.1, 7.6**
+**Validates: Requirements 7.1, 7.5**
 
 ---
 
@@ -588,7 +590,7 @@ CREATE TABLE pattern_thresholds (
 - `medium`: 25 (no multiplier) or 37 (deep work, floor of 25 × 1.5)
 - `high`: 50 (no multiplier) or 75 (deep work)
 
-**Validates: Requirements 7.2, 7.5**
+**Validates: Requirements 7.2, 7.4**
 
 ---
 
@@ -596,11 +598,7 @@ CREATE TABLE pattern_thresholds (
 
 *For any* sequence of XP events that causes the user's cumulative XP to cross a defined badge threshold for the first time, the corresponding badge SHALL be awarded exactly once (idempotent — re-crossing the same threshold does not award a duplicate badge).
 
-**Validates: Requirements 7.3**
-
----
-
-### Property 20: Calendar Event Active Lookup
+**Validates: Requirements 7.3**: Calendar Event Active Lookup
 
 *For any* `CalendarEvent` stored in the Local Store with `startTime ≤ t < endTime`, calling `getActiveEvent(t)` SHALL return that event. For any timestamp `t` not covered by any stored event, `getActiveEvent(t)` SHALL return `null`.
 
@@ -693,7 +691,7 @@ The 23 correctness properties defined above are each implemented as a single `fa
 - **Classifier**: Example tests for each `AppCategory` verifying correct heuristic application.
 - **Prediction Engine**: Example test for corrupted model recovery (Requirement 5.7).
 - **Dashboard**: Example test for PDF export to local path (Requirement 6.4); example test for ≤5 second refresh latency (Requirement 6.5).
-- **Task Manager**: Example test for leaderboard opt-in/opt-out (Requirement 7.4).
+- **Task Manager**: Example test for XP award on task completion (Requirement 7.2).
 - **Calendar Sync**: Integration test with mocked Google Calendar API for initial fetch (Requirement 8.1); example test for API error fallback (Requirement 8.4).
 - **Ghost Bar**: Example test for settings-disabled suppression (Requirement 4.5); example test for reduced motion static display (Requirement 4.6).
 - **Accessibility**: Example test for dark mode theme switch latency (Requirement 10.2); example test for reduced motion flag (Requirement 10.4).

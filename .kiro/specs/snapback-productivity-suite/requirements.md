@@ -18,7 +18,7 @@ SnapBack is a local-first productivity suite for students and professionals that
 - **Intervention**: A personalized, context-aware notification or prompt triggered by the Prediction_Engine before a distraction spiral occurs.
 - **Heat_Map**: A color-coded time visualization where green represents deep work, yellow represents shallow work, and red represents distraction loops.
 - **Dashboard**: The main UI screen displaying productivity metrics, reports, and visualizations.
-- **Task_Manager**: The gamified to-do list component with XP, badges, and leaderboard.
+- **Task_Manager**: The gamified to-do list component with XP and badges.
 - **Calendar_Sync**: The component responsible for reading and writing Google Calendar events.
 - **Local_Store**: The encrypted, on-device data store that persists all user data.
 - **Session**: A continuous period of computer usage bounded by login/wake and logout/sleep events.
@@ -74,7 +74,7 @@ SnapBack is a local-first productivity suite for students and professionals that
 
 ---
 
-### Requirement 4: Productivity Ghost
+### Requirement 4: Productivity Ghost *(low priority — deferred to later development phase)*
 
 **User Story:** As a user, I want to see a subtle indicator of my personal best pace for my current activity while I work, so that I can challenge myself to match or beat my own record.
 
@@ -121,16 +121,15 @@ SnapBack is a local-first productivity suite for students and professionals that
 
 ### Requirement 7: Gamified To-Do List
 
-**User Story:** As a user, I want a task management system with XP, badges, and a leaderboard, so that completing tasks feels rewarding and I stay motivated.
+**User Story:** As a user, I want a task management system with XP and badges, so that completing tasks feels rewarding and I stay motivated.
 
 #### Acceptance Criteria
 
 1. THE Task_Manager SHALL allow the user to create, edit, delete, and reorder tasks with a title, optional due date, and optional priority level.
 2. WHEN the user marks a task as complete, THE Task_Manager SHALL award XP to the user's profile based on the task's priority level: 10 XP for low priority, 25 XP for medium priority, and 50 XP for high priority.
 3. WHEN the user's cumulative XP crosses a defined Badge threshold, THE Task_Manager SHALL award the corresponding Badge and display a notification to the user.
-4. THE Task_Manager SHALL display a leaderboard showing the user's XP rank relative to anonymized peer data WHERE the user has opted into the local peer comparison feature.
-5. WHEN the user completes tasks during a verified deep work session, THE Task_Manager SHALL apply a 1.5x XP multiplier to those tasks.
-6. THE Task_Manager SHALL persist all task data and XP history in the Local_Store.
+4. WHEN the user completes tasks during a verified deep work session, THE Task_Manager SHALL apply a 1.5x XP multiplier to those tasks.
+5. THE Task_Manager SHALL persist all task data and XP history in the Local_Store.
 
 ---
 

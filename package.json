@@ -1,0 +1,35 @@
+{
+  "name": "snapback-productivity-suite",
+  "version": "0.1.0",
+  "description": "Local-first productivity suite for students and professionals",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"tsc -p tsconfig.main.json --watch\"",
+    "build": "vite build && tsc -p tsconfig.main.json",
+    "test": "vitest --run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "electron": "^29.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "active-win": "^8.1.0",
+    "keytar": "^7.9.0",
+    "pdfkit": "^0.14.0",
+    "@tensorflow/tfjs-node": "^4.17.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/node": "^20.11.0",
+    "@types/pdfkit": "^0.13.3",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "fast-check": "^3.17.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.0",
+    "vitest": "^1.3.1"
+  }
+}

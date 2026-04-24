@@ -6,7 +6,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
 
 ## Tasks
 
-- [ ] 1. Project scaffold and Local Store foundation
+- [x] 1. Project scaffold and Local Store foundation
   - Initialize Electron + React + TypeScript project with Vite (renderer) and tsc (main process)
   - Configure `vitest.config.ts` with `globals: true, environment: 'node'`
   - Install dependencies: `better-sqlite3`, `sqlcipher`, `electron`, `react`, `typescript`, `fast-check`, `vitest`, `active-win`, `keytar`, `pdfkit`, `@tensorflow/tfjs-node`
@@ -14,7 +14,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
   - Implement `src/main/store/LocalStore.ts` implementing `ILocalStore` — all CRUD methods, SQLite transactions, `PRAGMA integrity_check` on startup, AES-256 key derivation via PBKDF2 from machine UUID + OS user SID
   - _Requirements: 1.5, 9.1, 9.4_
 
-  - [ ]* 1.1 Write property test for data deletion completeness
+  - [x]* 1.1 Write property test for data deletion completeness
     - **Property 23: Data Deletion Completeness**
     - **Validates: Requirements 9.4**
 
@@ -22,13 +22,13 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
     - **Property 6: Manual Override Round-Trip**
     - **Validates: Requirements 2.7**
 
-- [ ] 2. Network Guard
+- [x] 2. Network Guard
   - Implement `src/main/network/NetworkGuard.ts` that wraps Node.js `http`/`https` modules
   - Maintain an allowlist; when Calendar Sync is not authorized, the allowlist is empty
   - Block any non-allowlisted outbound connection and call `LocalStore.insertAuditLog` with `event_type = 'blocked_connection'`
   - _Requirements: 9.2, 9.5_
 
-  - [ ]* 2.1 Write property test for Network Guard blocking
+  - [x]* 2.1 Write property test for Network Guard blocking
     - **Property 22: Network Guard Blocks Non-Allowlisted Endpoints**
     - **Validates: Requirements 9.2, 9.5**
 
@@ -101,7 +101,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
     - Example test: corrupt model blob → `rebuildFromStore()` called → toast notification emitted
     - _Requirements: 5.7_
 
-- [ ] 7. Productivity Ghost
+- [ ]* 7. Productivity Ghost *(deferred — implement after core features are stable)*
   - Implement `src/main/ghost/ProductivityGhost.ts` implementing `IProductivityGhost`
   - Implement `getGhostBarState`: return `visible: false` when `session_count < 3` or ghost disabled in settings
   - Implement `updateBestPace`: only update Local Store when `newScore > currentBestPaceScore`
@@ -128,11 +128,11 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
   - Implement badge threshold crossing detection in `completeTask` — award each badge exactly once (idempotent)
   - Implement `getTotalXP()` by summing `xp_events` from Local Store
   - Implement `getBadges()` returning all badges with `awarded_at` set for earned ones
-  - _Requirements: 7.1, 7.2, 7.3, 7.5, 7.6_
+  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
   - [ ]* 8.1 Write property test for XP award correctness
     - **Property 18: XP Award Correctness**
-    - **Validates: Requirements 7.2, 7.5**
+    - **Validates: Requirements 7.2, 7.4**
 
   - [ ]* 8.2 Write property test for badge award threshold crossing
     - **Property 19: Badge Award Threshold Crossing**
@@ -140,11 +140,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
 
   - [ ]* 8.3 Write property test for task CRUD round-trip
     - **Property 17: Task CRUD Round-Trip**
-    - **Validates: Requirements 7.1, 7.6**
-
-  - [ ]* 8.4 Write unit test for leaderboard opt-in/opt-out
-    - Example test: leaderboard visible when opted in, hidden when opted out
-    - _Requirements: 7.4_
+    - **Validates: Requirements 7.1, 7.5**
 
 - [ ] 9. Calendar Sync
   - Implement `src/main/calendar/CalendarSync.ts` implementing `ICalendarSync`
@@ -229,8 +225,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
 
 - [ ] 14. React UI — Task Manager view
   - Implement `src/renderer/pages/TasksPage.tsx`: task list with create/edit/delete/reorder, priority selector, due date picker
-  - Display XP total, earned badges with notification on new badge award
-  - Implement leaderboard panel (visible only when user has opted into peer comparison)
+  - Display XP total and earned badges with notification on new badge award
   - Wire IPC calls to `TaskManagerService`
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
@@ -267,7 +262,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
 
 ## Notes
 
-- Tasks marked with `*` are optional and can be skipped for faster MVP
+- Tasks marked with `*` are optional and can be skipped for faster MVP; Task 7 (Productivity Ghost) is explicitly deferred to a later phase
 - Each task references specific requirements for traceability
 - Property tests use `fast-check` with a minimum of 100 iterations per run
 - Each property test file includes a comment: `// Feature: snapback-productivity-suite, Property N: <Title>`
