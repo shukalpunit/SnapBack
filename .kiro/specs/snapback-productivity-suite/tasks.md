@@ -74,7 +74,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
 - [x] 5. Checkpoint — core data pipeline
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Prediction Engine
+- [x] 6. Prediction Engine
   - Implement `src/main/prediction/PredictionEngine.ts` implementing `IPredictionEngine`
   - Define `BehavioralFeatureVector` extraction from recent `ActivityTick` + `Classification` history
   - Build a TensorFlow.js feedforward network (2 hidden layers, 16 units each) in Node.js process
@@ -85,19 +85,19 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
   - On corrupted/missing model blob, call `rebuildFromStore()` and emit a non-blocking toast notification
   - _Requirements: 5.1, 5.2, 5.4, 5.5, 5.6, 5.7_
 
-  - [ ]* 6.1 Write property test for intervention threshold arithmetic
+  - [x]* 6.1 Write property test for intervention threshold arithmetic
     - **Property 12: Intervention Threshold Arithmetic**
     - **Validates: Requirements 5.4, 5.5**
 
-  - [ ]* 6.2 Write property test for intervention suppression before sufficient data
+  - [x]* 6.2 Write property test for intervention suppression before sufficient data
     - **Property 13: Intervention Suppression Before Sufficient Data**
     - **Validates: Requirements 5.6**
 
-  - [ ]* 6.3 Write property test for intervention notification contains pattern description
+  - [x]* 6.3 Write property test for intervention notification contains pattern description
     - **Property 14: Intervention Notification Contains Pattern Description**
     - **Validates: Requirements 5.3**
 
-  - [ ]* 6.4 Write unit test for corrupted model recovery
+  - [x]* 6.4 Write unit test for corrupted model recovery
     - Example test: corrupt model blob → `rebuildFromStore()` called → toast notification emitted
     - _Requirements: 5.7_
 

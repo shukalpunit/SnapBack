@@ -13,3 +13,4 @@
 - [2026-04-24 00:00:09 MST] Provided a brief explanation of the Classifier's function (no files changed).
 - [2026-04-24 00:00:10 MST] Implemented Classifier (src/main/classifier/Classifier.ts) with priority-ordered classification rules, app category detection, idle filtering, and manual override; 20 tests (Property 4, 8 category tests, 7 integration tests); core data pipeline checkpoint complete; full suite at 73 tests passing.
 - [2026-04-24 16:50:47 MST] Updated TIMELINE.md format to use MST timestamps going forward.
+- [2026-04-24 16:55:50 MST] Implemented PredictionEngine (src/main/prediction/PredictionEngine.ts) with feature extraction, rule-based pattern detection, per-pattern threshold management, rebuildFromStore, and toast notifications; 19 tests (Property 12, 13, 14 + 13 unit tests); full suite at 92 tests passing.
