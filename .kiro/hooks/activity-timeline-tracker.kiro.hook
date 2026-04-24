@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Activity Timeline Tracker",
+  "description": "After each prompt response, appends a timestamped entry to TIMELINE.md capturing what was generated, creating a running log of all Kiro activities for team visibility and progression tracking.",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Append a timestamped entry to TIMELINE.md (create it if it doesn't exist) summarizing what was generated or changed in response to the user's last prompt. Format each entry as: `- [YYYY-MM-DD HH:MM:SS] <brief summary of what was generated/changed>`. Keep summaries concise (one line). Do not modify any other files."
+  }
+}
