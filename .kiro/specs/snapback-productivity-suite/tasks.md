@@ -32,7 +32,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
     - **Property 22: Network Guard Blocks Non-Allowlisted Endpoints**
     - **Validates: Requirements 9.2, 9.5**
 
-- [ ] 3. Activity Tracker
+- [x] 3. Activity Tracker
   - Implement `src/main/tracker/ActivityTracker.ts` implementing `IActivityTracker`
   - Use `active-win` for foreground window polling on macOS and Windows
   - Enforce `pollIntervalMs ≤ 5000` — clamp or reject values above 5000
@@ -43,19 +43,19 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
   - Buffer up to 60 seconds of ticks in memory if Local Store write fails; drop oldest on overflow
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-  - [ ]* 3.1 Write property test for poll interval constraint
+  - [x]* 3.1 Write property test for poll interval constraint
     - **Property 1: Poll Interval Constraint**
     - **Validates: Requirements 1.1**
 
-  - [ ]* 3.2 Write property test for idle time exclusion
+  - [x]* 3.2 Write property test for idle time exclusion
     - **Property 2: Idle Time Exclusion**
     - **Validates: Requirements 1.4**
 
-  - [ ]* 3.3 Write unit tests for Activity Tracker
+  - [x]* 3.3 Write unit tests for Activity Tracker
     - Integration test with mocked `active-win` verifying tick emission, idle detection, and app-switch recording
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 4. Classifier
+- [x] 4. Classifier
   - Implement `src/main/classifier/Classifier.ts` implementing `IClassifier`
   - Define `AppCategory` mapping heuristics for `ide`, `browser`, `email`, `communication`, `document`, `media`, `other`
   - Implement classification rules in priority order: distraction loop → deep work → shallow work (fallback)
@@ -63,15 +63,15 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
   - Handle null/empty `appName` by assigning `app_category = 'other'` and applying default heuristics
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.7_
 
-  - [ ]* 4.1 Write property test for classifier exhaustiveness and exclusivity
+  - [x]* 4.1 Write property test for classifier exhaustiveness and exclusivity
     - **Property 4: Classifier Exhaustiveness and Exclusivity**
     - **Validates: Requirements 2.1, 2.2, 2.3, 2.4**
 
-  - [ ]* 4.2 Write unit tests for Classifier
+  - [x]* 4.2 Write unit tests for Classifier
     - Example tests for each `AppCategory` verifying correct heuristic application
     - _Requirements: 2.5_
 
-- [ ] 5. Checkpoint — core data pipeline
+- [x] 5. Checkpoint — core data pipeline
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 6. Prediction Engine
