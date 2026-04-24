@@ -1,13 +1,15 @@
 # Timeline
+> All timestamps in MST (Mountain Standard Time, UTC-7)
 
-- [2026-04-24 00:00:00] Generated full spec for SnapBack productivity suite: requirements.md (10 requirements), design.md (23 correctness properties, full SQLite schema, TypeScript interfaces), tasks.md (18 tasks), and architecture_selection.md (Layered Pipeline with EventBus selected over CQRS and event-driven projector candidates).
-- [2026-04-24 00:00:01] Updated activity-timeline-tracker hook: changed trigger from agentStop to postToolUse (write) to track each prompt's generated output individually.
-- [2026-04-24 00:00:02] Fixed circular loop in activity-timeline-tracker hook by switching trigger from postToolUse (write) back to agentStop.
-- [2026-04-24 00:00:03] Advised parallel dev strategy: Task 1 (project scaffold) for Dev 1 and Task 2 (NetworkGuard) for Dev 2 as the optimal first parallel workstream.
-- [2026-04-24 00:00:04] Removed leaderboard concept from requirements.md (REQ-7.4 dropped), design.md (description, testing, property references updated), and tasks.md (task 8.4 removed, task 14 bullet removed).
-- [2026-04-24 00:00:05] Confirmed no FocusFlow references existed in specs; demoted Productivity Ghost (REQ-4, Task 7) to deferred/optional across requirements.md, design.md, and tasks.md.
-- [2026-04-24 00:00:06] Audited implementation status: Task 1 (scaffold + LocalStore) confirmed fully implemented; Task 2 (NetworkGuard) confirmed not yet implemented.
-- [2026-04-24 00:00:07] Implemented NetworkGuard (src/main/network/NetworkGuard.ts) with allowlist-based connection filtering, audit logging, and 21 tests; fixed pre-existing foreign key bug in LocalStore.deleteAllData(); all 36 tests pass.
-- [2026-04-24 00:00:08] Implemented ActivityTracker (src/main/tracker/ActivityTracker.ts) with poll interval clamping, idle detection, app switch tracking, tick buffering, and audit logging; 17 tests (Property 1, Property 2, 13 unit tests); full suite at 53 tests passing.
-- [2026-04-24 00:00:09] Provided a brief explanation of the Classifier's function (no files changed).
-- [2026-04-24 00:00:10] Implemented Classifier (src/main/classifier/Classifier.ts) with priority-ordered classification rules, app category detection, idle filtering, and manual override; 20 tests (Property 4, 8 category tests, 7 integration tests); core data pipeline checkpoint complete; full suite at 73 tests passing.
+- [2026-04-24 00:00:00 MST] Generated full spec for SnapBack productivity suite: requirements.md (10 requirements), design.md (23 correctness properties, full SQLite schema, TypeScript interfaces), tasks.md (18 tasks), and architecture_selection.md (Layered Pipeline with EventBus selected over CQRS and event-driven projector candidates).
+- [2026-04-24 00:00:01 MST] Updated activity-timeline-tracker hook: changed trigger from agentStop to postToolUse (write) to track each prompt's generated output individually.
+- [2026-04-24 00:00:02 MST] Fixed circular loop in activity-timeline-tracker hook by switching trigger from postToolUse (write) back to agentStop.
+- [2026-04-24 00:00:03 MST] Advised parallel dev strategy: Task 1 (project scaffold) for Dev 1 and Task 2 (NetworkGuard) for Dev 2 as the optimal first parallel workstream.
+- [2026-04-24 00:00:04 MST] Removed leaderboard concept from requirements.md (REQ-7.4 dropped), design.md (description, testing, property references updated), and tasks.md (task 8.4 removed, task 14 bullet removed).
+- [2026-04-24 00:00:05 MST] Confirmed no FocusFlow references existed in specs; demoted Productivity Ghost (REQ-4, Task 7) to deferred/optional across requirements.md, design.md, and tasks.md.
+- [2026-04-24 00:00:06 MST] Audited implementation status: Task 1 (scaffold + LocalStore) confirmed fully implemented; Task 2 (NetworkGuard) confirmed not yet implemented.
+- [2026-04-24 00:00:07 MST] Implemented NetworkGuard (src/main/network/NetworkGuard.ts) with allowlist-based connection filtering, audit logging, and 21 tests; fixed pre-existing foreign key bug in LocalStore.deleteAllData(); all 36 tests pass.
+- [2026-04-24 00:00:08 MST] Implemented ActivityTracker (src/main/tracker/ActivityTracker.ts) with poll interval clamping, idle detection, app switch tracking, tick buffering, and audit logging; 17 tests (Property 1, Property 2, 13 unit tests); full suite at 53 tests passing.
+- [2026-04-24 00:00:09 MST] Provided a brief explanation of the Classifier's function (no files changed).
+- [2026-04-24 00:00:10 MST] Implemented Classifier (src/main/classifier/Classifier.ts) with priority-ordered classification rules, app category detection, idle filtering, and manual override; 20 tests (Property 4, 8 category tests, 7 integration tests); core data pipeline checkpoint complete; full suite at 73 tests passing.
+- [2026-04-24 16:50:47 MST] Updated TIMELINE.md format to use MST timestamps going forward.
