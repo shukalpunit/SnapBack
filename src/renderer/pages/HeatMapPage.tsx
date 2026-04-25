@@ -20,8 +20,12 @@ export default function HeatMapPage({ colorBlindMode = false, lang = 'en' }: Hea
   const [tooltip, setTooltip] = useState<{ cellIndex: number; data: TooltipData } | null>(null);
 
   useEffect(() => {
-    getIPC().getHeatMapCells(date).then(setCells);
+    const refresh = () => getIPC().getHeatMapCells(date).then(setCells);
+    refresh();
     setTooltip(null);
+    // Auto-refresh every 10 seconds
+    const interval = setInterval(refresh, 10_000);
+    return () => clearInterval(interval);
   }, [date]);
 
   const handleCellClick = useCallback(async (cellIndex: number) => {

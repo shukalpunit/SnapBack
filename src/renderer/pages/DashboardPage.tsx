@@ -26,9 +26,15 @@ export default function DashboardPage({ colorBlindMode = false, lang = 'en' }: D
 
   useEffect(() => {
     const ipc = getIPC();
-    const today = new Date().toISOString().slice(0, 10);
-    ipc.getDailySummary(today).then(setSummary);
-    ipc.getSevenDayTrend().then(setTrend);
+    const refresh = () => {
+      const today = new Date().toISOString().slice(0, 10);
+      ipc.getDailySummary(today).then(setSummary);
+      ipc.getSevenDayTrend().then(setTrend);
+    };
+    refresh();
+    // Auto-refresh every 10 seconds to show updated tracking data
+    const interval = setInterval(refresh, 10_000);
+    return () => clearInterval(interval);
   }, []);
 
   const total = summary ? Number(msToHours(summary.totalTrackedMs)) : 0;

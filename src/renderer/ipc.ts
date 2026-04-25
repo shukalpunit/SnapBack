@@ -102,22 +102,22 @@ export interface AppSettings {
   calendarAuthorized: boolean;
 }
 
-import { createDevIPC } from './devSimulator.js';
+import { createBrowserIPC } from './browserTracker.js';
 
 /**
  * Get the IPC bridge. In Electron, this comes from the preload script.
- * Falls back to a simulated data layer for browser-based development.
+ * In browser dev mode, uses real browser-based activity tracking.
  */
 export function getIPC(): SnapBackIPC {
   if (typeof window !== 'undefined' && (window as any).snapbackAPI) {
     return (window as any).snapbackAPI as SnapBackIPC;
   }
 
-  // Dev mode — use simulated data so the UI renders with realistic content
-  if (!_devIPC) {
-    _devIPC = createDevIPC();
+  // Browser mode — track real user activity via browser APIs
+  if (!_browserIPC) {
+    _browserIPC = createBrowserIPC();
   }
-  return _devIPC!;
+  return _browserIPC!;
 }
 
-let _devIPC: SnapBackIPC | null = null;
+let _browserIPC: SnapBackIPC | null = null;
