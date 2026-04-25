@@ -229,7 +229,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
   - Wire IPC calls to `TaskManagerService`
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [-] 15. Settings and accessibility
+- [x] 15. Settings and accessibility
   - Implement `src/renderer/pages/SettingsPage.tsx` with controls for: language (≥5 options, default English), dark mode, color blind mode, reduced motion, Ghost Bar enable/disable + corner position, Calendar Sync authorize/revoke, data deletion
   - Implement dark mode: apply dark CSS theme to all surfaces within 500 ms, no restart required
   - Implement reduced motion: disable all non-essential animations app-wide when enabled

@@ -84,6 +84,22 @@ export interface SnapBackIPC {
   reorderTasks(orderedIds: string[]): Promise<void>;
   getTotalXP(): Promise<number>;
   getBadges(): Promise<BadgeInfo[]>;
+  // Settings
+  getSettings(): Promise<AppSettings>;
+  updateSettings(updates: Partial<AppSettings>): Promise<AppSettings>;
+  authorizeCalendar(): Promise<void>;
+  revokeCalendar(): Promise<void>;
+  deleteAllData(): Promise<void>;
+}
+
+export interface AppSettings {
+  language: string;
+  darkMode: boolean;
+  colorBlindMode: boolean;
+  reducedMotion: boolean;
+  ghostBarEnabled: boolean;
+  ghostBarPosition: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  calendarAuthorized: boolean;
 }
 
 /**
@@ -116,5 +132,14 @@ export function getIPC(): SnapBackIPC {
     async reorderTasks() {},
     async getTotalXP() { return 0; },
     async getBadges() { return []; },
+    async getSettings() {
+      return { language: 'en', darkMode: false, colorBlindMode: false, reducedMotion: false, ghostBarEnabled: true, ghostBarPosition: 'bottom-right' as const, calendarAuthorized: false };
+    },
+    async updateSettings(updates: Partial<AppSettings>) {
+      return { language: 'en', darkMode: false, colorBlindMode: false, reducedMotion: false, ghostBarEnabled: true, ghostBarPosition: 'bottom-right' as const, calendarAuthorized: false, ...updates };
+    },
+    async authorizeCalendar() {},
+    async revokeCalendar() {},
+    async deleteAllData() {},
   };
 }
