@@ -1,170 +1,138 @@
 /**
  * SnapBack — Electron main process entry point.
  *
- * Initializes all subsystems in order:
- * LocalStore → NetworkGuard → EventBus → ActivityTracker → Classifier →
- * PredictionEngine → TaskManagerService → CalendarSync → DashboardService →
- * HeatMapService
- *
- * Registers IPC handlers for renderer communication.
- * Requirements: 1.1, 2.1, 5.2, 5.3, 6.5
+ * Initializes all subsystems (LocalStore, ActivityTracker, Classifier,
+ * PredictionEngine, TaskManagerService, CalendarSync, NetworkGuard,
+ * DashboardService, HeatMapService, TimeBlockScheduler) and registers
+ * IPC handlers that bridge the renderer UI to the backend.
  */
 
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'node:path';
-import { EventEmitter } from 'node:events';
-import { writeFileSync } from 'node:fs';
 
 import { LocalStore } from './store/LocalStore.js';
 import { NetworkGuard } from './network/NetworkGuard.js';
-import { ActivityTracker } from './tracker/ActivityTracker.js';
+import { ActivityTracker, type ActiveWindowProvider, type IdleTimeProvider } from './tracker/ActivityTracker.js';
 import { Classifier } from './classifier/Classifier.js';
 import { PredictionEngine } from './prediction/PredictionEngine.js';
 import { TaskManagerService } from './tasks/TaskManagerService.js';
-import { CalendarSync } from './calendar/CalendarSync.js';
+import { CalendarSync, type KeychainProvider, type CalendarAPIClient } from './calendar/CalendarSync.js';
 import { DashboardService } from './dashboard/DashboardService.js';
 import { HeatMapService } from './heatmap/HeatMapService.js';
+import { TimeBlockScheduler } from './scheduler/TimeBlockScheduler.js';
+import type { ClassifiedSegment, Classification, ActivityTick } from './types.js';
 
-import type { ActivityTick } from './types.js';
+// ─── Subsystem Initialization ────────────────────────────────────────────────
 
-// ─── Globals ─────────────────────────────────────────────────────────────────
+const DB_PATH = join(app.getPath('userData'), 'snapback.db');
 
 let mainWindow: BrowserWindow | null = null;
 let store: LocalStore;
 let networkGuard: NetworkGuard;
-let eventBus: EventEmitter;
-let activityTracker: ActivityTracker;
+let tracker: ActivityTracker;
 let classifier: Classifier;
 let predictionEngine: PredictionEngine;
-let taskManagerService: TaskManagerService;
+let taskManager: TaskManagerService;
 let calendarSync: CalendarSync;
 let dashboardService: DashboardService;
 let heatMapService: HeatMapService;
+let scheduler: TimeBlockScheduler;
 
-// In-memory settings (persisted to a simple JSON in production)
-let appSettings = {
-  language: 'en',
-  darkMode: false,
-  colorBlindMode: false,
-  reducedMotion: false,
-  ghostBarEnabled: true,
-  ghostBarPosition: 'bottom-right' as const,
-  calendarAuthorized: false,
-};
+function initSubsystems(): void {
+  store = new LocalStore(DB_PATH);
 
-// ─── Initialization ──────────────────────────────────────────────────────────
-
-function initializeSubsystems(): void {
-  // 1. Local Store
-  const dbPath = join(app.getPath('userData'), 'snapback.db');
-  store = new LocalStore(dbPath);
-
-  // 2. Network Guard
+  // NetworkGuard
   networkGuard = new NetworkGuard(store);
   networkGuard.install();
 
-  // 3. Event Bus
-  eventBus = new EventEmitter();
-  eventBus.setMaxListeners(20);
+  // Classifier
+  classifier = new Classifier(store);
 
-  // 4. Activity Tracker
-  let activeWinModule: any;
-  try {
-    activeWinModule = require('active-win');
-  } catch {
-    activeWinModule = null;
-  }
+  // PredictionEngine
+  predictionEngine = new PredictionEngine(store, (msg) => {
+    mainWindow?.webContents.send('toast', msg);
+  });
 
-  activityTracker = new ActivityTracker(
-    { pollIntervalMs: 5000, idleThresholdMs: 120_000 },
-    async () => {
-      if (!activeWinModule) return undefined;
-      try {
-        const win = await activeWinModule.activeWindow();
-        if (!win) return undefined;
-        return { title: win.title ?? '', owner: { name: win.owner?.name ?? '' } };
-      } catch {
-        return undefined;
-      }
+  // TaskManagerService
+  taskManager = new TaskManagerService(store);
+
+  // DashboardService
+  dashboardService = new DashboardService(store);
+
+  // HeatMapService
+  heatMapService = new HeatMapService(store);
+
+  // TimeBlockScheduler
+  scheduler = new TimeBlockScheduler(store);
+
+  // CalendarSync — uses stub keychain/API for now (real OAuth wiring is Task 16+)
+  const stubKeychain: KeychainProvider = {
+    async getPassword() { return null; },
+    async setPassword() {},
+    async deletePassword() { return true; },
+  };
+  const stubAPI: CalendarAPIClient = {
+    async fetchEvents() { return []; },
+    async refreshToken() { return ''; },
+  };
+  calendarSync = new CalendarSync(store, stubKeychain, stubAPI, {
+    networkGuardHook: {
+      authorize: () => networkGuard.authorizeCalendar(),
+      revoke: () => networkGuard.revokeCalendar(),
     },
-    () => {
-      // Idle time detection — platform-specific
-      // In production, use electron's powerMonitor or native bindings
-      // For now, return 0 (not idle)
+  });
+
+  // ActivityTracker — uses active-win and powerMonitor for real OS polling
+  const getActiveWindow: ActiveWindowProvider = async () => {
+    try {
+      const activeWin = await import('active-win');
+      const result = await activeWin.default();
+      if (!result) return undefined;
+      return { title: result.title, owner: { name: result.owner.name } };
+    } catch {
+      return undefined;
+    }
+  };
+
+  const getIdleTime: IdleTimeProvider = () => {
+    try {
+      const { powerMonitor } = require('electron');
+      return powerMonitor.getSystemIdleTime() * 1000; // seconds → ms
+    } catch {
       return 0;
-    },
+    }
+  };
+
+  tracker = new ActivityTracker(
+    { pollIntervalMs: 5000, idleThresholdMs: 120_000 },
+    getActiveWindow,
+    getIdleTime,
     store
   );
 
-  // 5. Classifier
-  classifier = new Classifier(store);
+  // Wire tracker → classifier → prediction pipeline
+  //
+  // Classifier.ingest() calls flush() internally on app switch but discards
+  // the returned segment. We wrap flush() to intercept and persist segments.
+  let lastClassification: Classification = 'shallow_work';
 
-  // 6. Prediction Engine
-  predictionEngine = new PredictionEngine(store, (message) => {
-    mainWindow?.webContents.send('toast', message);
-  });
-
-  // 7. Task Manager Service
-  taskManagerService = new TaskManagerService(store);
-
-  // 8. Calendar Sync (with mock keychain for now — keytar wired in production)
-  const keychainStore = new Map<string, string>();
-  calendarSync = new CalendarSync(
-    store,
-    {
-      async getPassword(_svc, account) { return keychainStore.get(account) ?? null; },
-      async setPassword(_svc, account, pw) { keychainStore.set(account, pw); },
-      async deletePassword(_svc, account) { return keychainStore.delete(account); },
-    },
-    {
-      async fetchEvents() { return []; },
-      async refreshToken() { return ''; },
-    },
-    {
-      networkGuardHook: {
-        authorize: () => networkGuard.authorizeCalendar(),
-        revoke: () => networkGuard.revokeCalendar(),
-      },
+  const originalFlush = classifier.flush.bind(classifier);
+  (classifier as any).flush = function (): ClassifiedSegment | null {
+    const segment = originalFlush();
+    if (segment) {
+      try { store.insertSegment(segment); } catch { /* already inserted or DB error */ }
+      lastClassification = segment.classification;
     }
-  );
+    return segment;
+  };
 
-  // 9. Dashboard Service
-  dashboardService = new DashboardService(store);
-
-  // 10. Heat Map Service
-  heatMapService = new HeatMapService(store);
-
-  // ─── Wire Event Subscriptions ────────────────────────────────────────────
-
-  // ActivityTracker → EventBus → Classifier + PredictionEngine
-  activityTracker.onTick((tick: ActivityTick) => {
-    eventBus.emit('activity.tick', tick);
-  });
-
-  eventBus.on('activity.tick', (tick: ActivityTick) => {
-    // Feed to classifier
+  tracker.onTick((tick: ActivityTick) => {
     classifier.ingest(tick);
-
-    // Check if classifier flushed a segment (app switch)
-    // The classifier flushes internally on app switch via ingest()
-
-    // Feed to prediction engine
-    const lastClassification = 'shallow_work'; // simplified — in production, use actual classification
     predictionEngine.ingestTick(tick, lastClassification);
-
-    // Check for intervention
-    const prediction = predictionEngine.predict();
-    if (prediction) {
-      mainWindow?.webContents.send('intervention', {
-        patternDescription: prediction.patternDescription,
-        suggestedAction: prediction.suggestedAction,
-        confidence: prediction.confidence,
-      });
-    }
   });
 
   // Start tracking
-  activityTracker.start();
+  tracker.start();
 }
 
 // ─── Window Creation ─────────────────────────────────────────────────────────
@@ -191,11 +159,34 @@ function createWindow(): void {
   });
 }
 
+// ─── App Lifecycle ───────────────────────────────────────────────────────────
+
+app.whenReady().then(() => {
+  initSubsystems();
+  registerIPCHandlers();
+  createWindow();
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    tracker?.stop();
+    networkGuard?.uninstall();
+    store?.close();
+    app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (mainWindow === null) createWindow();
+});
+
+
 // ─── IPC Handlers ────────────────────────────────────────────────────────────
 
 function registerIPCHandlers(): void {
-  // Dashboard
-  ipcMain.handle('dashboard:getDailySummary', (_e, date: string) => {
+  // ── Dashboard (delegates to DashboardService) ────────────────────────────
+
+  ipcMain.handle('dashboard:getDailySummary', (_event, date: string) => {
     return dashboardService.getDailySummary(date);
   });
 
@@ -203,28 +194,102 @@ function registerIPCHandlers(): void {
     return dashboardService.getSevenDayTrend();
   });
 
-  ipcMain.handle('dashboard:getAppTimeByDateRange', (_e, from: number, to: number) => {
+  ipcMain.handle('dashboard:getAppTimeByDateRange', (_event, from: number, to: number) => {
     return dashboardService.getAppTimeByDateRange(from, to);
   });
 
-  ipcMain.handle('dashboard:exportWeeklyReportPDF', async (_e, targetDir: string) => {
-    const buffer = await dashboardService.generatePDFReport();
-    const filePath = join(targetDir, `snapback-report-${new Date().toISOString().slice(0, 10)}.pdf`);
-    writeFileSync(filePath, buffer);
+  ipcMain.handle('dashboard:exportWeeklyReportPDF', async (_event, targetDir: string) => {
+    const pdfBuffer = await dashboardService.generatePDFReport();
+    const { writeFileSync } = require('node:fs');
+    const outPath = join(targetDir, `snapback-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+    writeFileSync(outPath, pdfBuffer);
   });
 
-  // Heat Map
-  ipcMain.handle('heatmap:getCells', (_e, date: string) => {
+  // ── Heat Map (delegates to HeatMapService) ───────────────────────────────
+
+  ipcMain.handle('heatmap:getCells', (_event, date: string) => {
     return heatMapService.getHeatMapCells(date);
   });
 
-  ipcMain.handle('heatmap:getTooltip', (_e, cellIndex: number, date: string) => {
+  ipcMain.handle('heatmap:getTooltip', (_event, cellIndex: number, date: string) => {
     return heatMapService.getTooltipData(cellIndex, date);
   });
 
-  // Calendar
-  ipcMain.handle('calendar:getActiveEvent', (_e, timestamp: number) => {
-    return calendarSync.getActiveEvent(timestamp);
+  // ── Tasks (delegates to TaskManagerService) ──────────────────────────────
+
+  ipcMain.handle('tasks:getAll', () => {
+    const tasks = store.queryTasks();
+    return tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      dueDate: t.dueDate,
+      priority: t.priority,
+      completed: t.completed,
+      xpAwarded: t.xpAwarded,
+      order: t.order,
+    }));
+  });
+
+  ipcMain.handle('tasks:create', (_event, title: string, priority: string, dueDate?: number) => {
+    const task = taskManager.createTask({
+      title,
+      priority: priority as 'low' | 'medium' | 'high',
+      dueDate,
+      completed: false,
+      completedAt: undefined,
+      completedDuringDeepWork: false,
+    });
+    return {
+      id: task.id,
+      title: task.title,
+      dueDate: task.dueDate,
+      priority: task.priority,
+      completed: task.completed,
+      xpAwarded: task.xpAwarded,
+      order: task.order,
+    };
+  });
+
+  ipcMain.handle('tasks:update', (_event, id: string, updates: Record<string, unknown>) => {
+    const task = taskManager.updateTask(id, updates as any);
+    return {
+      id: task.id,
+      title: task.title,
+      dueDate: task.dueDate,
+      priority: task.priority,
+      completed: task.completed,
+      xpAwarded: task.xpAwarded,
+      order: task.order,
+    };
+  });
+
+  ipcMain.handle('tasks:delete', (_event, id: string) => {
+    taskManager.deleteTask(id);
+  });
+
+  ipcMain.handle('tasks:complete', (_event, id: string, duringDeepWork: boolean) => {
+    const xpEvent = taskManager.completeTask(id, duringDeepWork);
+    return { xpAmount: xpEvent.xpAmount };
+  });
+
+  ipcMain.handle('tasks:reorder', (_event, orderedIds: string[]) => {
+    taskManager.reorderTasks(orderedIds);
+  });
+
+  ipcMain.handle('tasks:getTotalXP', () => {
+    return taskManager.getTotalXP();
+  });
+
+  ipcMain.handle('tasks:getBadges', () => {
+    return taskManager.getBadges();
+  });
+
+  // ── Calendar ─────────────────────────────────────────────────────────────
+
+  ipcMain.handle('calendar:getActiveEvent', (_event, timestamp: number) => {
+    const event = calendarSync.getActiveEvent(timestamp);
+    if (!event) return null;
+    return { title: event.title, startTime: event.startTime, endTime: event.endTime };
   });
 
   ipcMain.handle('calendar:authorize', async () => {
@@ -235,76 +300,38 @@ function registerIPCHandlers(): void {
     await calendarSync.revokeAuthorization();
   });
 
-  // Tasks
-  ipcMain.handle('tasks:getAll', () => {
-    return store.queryTasks();
-  });
+  // ── Settings ─────────────────────────────────────────────────────────────
+  // Settings are stored in localStorage on the renderer side.
+  // These handlers provide main-process state (e.g. calendar auth status).
 
-  ipcMain.handle('tasks:create', (_e, title: string, priority: string, dueDate?: number) => {
-    return taskManagerService.createTask({
-      title,
-      priority: priority as 'low' | 'medium' | 'high',
-      dueDate,
-      completed: false,
-      completedDuringDeepWork: false,
-    });
-  });
-
-  ipcMain.handle('tasks:update', (_e, id: string, updates: Record<string, unknown>) => {
-    return taskManagerService.updateTask(id, updates);
-  });
-
-  ipcMain.handle('tasks:delete', (_e, id: string) => {
-    taskManagerService.deleteTask(id);
-  });
-
-  ipcMain.handle('tasks:complete', (_e, id: string, duringDeepWork: boolean) => {
-    const xpEvent = taskManagerService.completeTask(id, duringDeepWork);
-    return { xpAmount: xpEvent.xpAmount };
-  });
-
-  ipcMain.handle('tasks:reorder', (_e, orderedIds: string[]) => {
-    taskManagerService.reorderTasks(orderedIds);
-  });
-
-  ipcMain.handle('tasks:getTotalXP', () => {
-    return taskManagerService.getTotalXP();
-  });
-
-  ipcMain.handle('tasks:getBadges', () => {
-    return taskManagerService.getBadges();
-  });
-
-  // Settings
   ipcMain.handle('settings:get', () => {
-    return { ...appSettings };
+    return {
+      language: 'en',
+      darkMode: false,
+      colorBlindMode: false,
+      reducedMotion: false,
+      ghostBarEnabled: true,
+      ghostBarPosition: 'bottom-right',
+      calendarAuthorized: calendarSync.isAuthorized(),
+    };
   });
 
-  ipcMain.handle('settings:update', (_e, updates: Record<string, unknown>) => {
-    appSettings = { ...appSettings, ...updates };
-    return { ...appSettings };
+  ipcMain.handle('settings:update', (_event, updates: Record<string, unknown>) => {
+    return {
+      language: 'en',
+      darkMode: false,
+      colorBlindMode: false,
+      reducedMotion: false,
+      ghostBarEnabled: true,
+      ghostBarPosition: 'bottom-right',
+      calendarAuthorized: calendarSync.isAuthorized(),
+      ...updates,
+    };
   });
 
-  // Data deletion
+  // ── Data Management ──────────────────────────────────────────────────────
+
   ipcMain.handle('store:deleteAllData', () => {
     store.deleteAllData();
   });
 }
-
-// ─── App Lifecycle ───────────────────────────────────────────────────────────
-
-app.whenReady().then(() => {
-  initializeSubsystems();
-  registerIPCHandlers();
-  createWindow();
-});
-
-app.on('window-all-closed', () => {
-  activityTracker?.stop();
-  networkGuard?.uninstall();
-  if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('activate', () => {
-  if (mainWindow === null) createWindow();
-});
