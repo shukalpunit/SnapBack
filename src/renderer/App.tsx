@@ -2,7 +2,7 @@
  * SnapBack — Root component with sidebar navigation matching the design system.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import DashboardPage from './pages/DashboardPage.js';
 import HeatMapPage from './pages/HeatMapPage.js';
 import TasksPage from './pages/TasksPage.js';
@@ -10,6 +10,7 @@ import SettingsPage from './pages/SettingsPage.js';
 import type { AppSettings } from './ipc.js';
 import { t, type Language } from './i18n/translations.js';
 import { loadSettings, saveSettings } from './utils/settingsStore.js';
+import { getLanguageTypography, langContainerProps, SKIP_NAV_LABELS, ACCESSIBLE_COLORS } from './utils/accessibility.js';
 
 type Tab = 'dashboard' | 'heatmap' | 'tasks' | 'reports' | 'calendar' | 'settings';
 
@@ -33,8 +34,26 @@ export default function App(): React.ReactElement {
     saveSettings(updated);
   }, []);
 
+  const langTypo = getLanguageTypography(lang);
+  const containerProps = langContainerProps(lang);
+
+  // Update document lang attribute when language changes
+  useEffect(() => {
+    document.documentElement.lang = langTypo.htmlLang;
+    document.documentElement.dir = langTypo.direction;
+  }, [lang, langTypo]);
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div {...containerProps} style={{ display: 'flex', minHeight: '100vh', fontFamily: langTypo.fontFamily }}>
+      {/* Skip Navigation (WCAG 2.4.1) */}
+      <a href="#main-content" style={{
+        position: 'absolute', left: -9999, top: 'auto', width: 1, height: 1, overflow: 'hidden',
+        zIndex: 100, padding: '12px 24px', background: '#a78bfa', color: '#0F1023',
+        fontWeight: 700, fontSize: 14, borderRadius: 8, textDecoration: 'none',
+      }} onFocus={(e) => { e.currentTarget.style.left = '50%'; e.currentTarget.style.transform = 'translateX(-50%)'; e.currentTarget.style.top = '8px'; e.currentTarget.style.width = 'auto'; e.currentTarget.style.height = 'auto'; }}
+         onBlur={(e) => { e.currentTarget.style.left = '-9999px'; e.currentTarget.style.width = '1px'; e.currentTarget.style.height = '1px'; }}>
+        {SKIP_NAV_LABELS[lang]}
+      </a>
       {/* Sidebar */}
       <aside style={{
         position: 'fixed', left: 0, top: 0, height: '100vh', width: 240,
@@ -128,7 +147,7 @@ export default function App(): React.ReactElement {
       </header>
 
       {/* Main Content */}
-      <main style={{ marginLeft: 240, paddingTop: 64, minHeight: '100vh', padding: '80px 24px 24px 24px', width: 'calc(100% - 240px)' }}>
+      <main id="main-content" role="main" style={{ marginLeft: 240, paddingTop: 64, minHeight: '100vh', padding: '80px 24px 24px 24px', width: 'calc(100% - 240px)' }}>
         {activeTab === 'dashboard' && <DashboardPage colorBlindMode={settings.colorBlindMode} lang={lang} />}
         {activeTab === 'heatmap' && <HeatMapPage colorBlindMode={settings.colorBlindMode} lang={lang} />}
         {activeTab === 'tasks' && <TasksPage lang={lang} />}
