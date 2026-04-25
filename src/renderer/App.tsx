@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import DashboardPage from './pages/DashboardPage.js';
 import HeatMapPage from './pages/HeatMapPage.js';
+import TasksPage from './pages/TasksPage.js';
 
 type Tab = 'dashboard' | 'heatmap' | 'tasks' | 'settings';
 
@@ -43,7 +44,7 @@ export default function App(): React.ReactElement {
       <main role="tabpanel">
         {activeTab === 'dashboard' && <DashboardPage colorBlindMode={colorBlindMode} />}
         {activeTab === 'heatmap' && <HeatMapPage colorBlindMode={colorBlindMode} />}
-        {activeTab === 'tasks' && <div><h2>Tasks</h2><p>Coming in Task 14…</p></div>}
+        {activeTab === 'tasks' && <TasksPage />}
         {activeTab === 'settings' && <div><h2>Settings</h2><p>Coming in Task 15…</p></div>}
       </main>
     </div>

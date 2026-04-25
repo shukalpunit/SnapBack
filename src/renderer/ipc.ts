@@ -47,6 +47,24 @@ export interface CalendarEventInfo {
   endTime: number;
 }
 
+export interface TaskInfo {
+  id: string;
+  title: string;
+  dueDate?: number;
+  priority: 'low' | 'medium' | 'high';
+  completed: boolean;
+  xpAwarded: number;
+  order: number;
+}
+
+export interface BadgeInfo {
+  id: string;
+  name: string;
+  description: string;
+  xpThreshold: number;
+  awardedAt?: number;
+}
+
 // ─── IPC Interface ───────────────────────────────────────────────────────────
 
 export interface SnapBackIPC {
@@ -57,6 +75,15 @@ export interface SnapBackIPC {
   getHeatMapTooltip(cellIndex: number, date: string): Promise<TooltipData | null>;
   getActiveCalendarEvent(timestamp: number): Promise<CalendarEventInfo | null>;
   exportWeeklyReportPDF(targetDir: string): Promise<void>;
+  // Task Manager
+  getTasks(): Promise<TaskInfo[]>;
+  createTask(title: string, priority: 'low' | 'medium' | 'high', dueDate?: number): Promise<TaskInfo>;
+  updateTask(id: string, updates: Partial<TaskInfo>): Promise<TaskInfo>;
+  deleteTask(id: string): Promise<void>;
+  completeTask(id: string, duringDeepWork: boolean): Promise<{ xpAmount: number }>;
+  reorderTasks(orderedIds: string[]): Promise<void>;
+  getTotalXP(): Promise<number>;
+  getBadges(): Promise<BadgeInfo[]>;
 }
 
 /**
@@ -79,5 +106,15 @@ export function getIPC(): SnapBackIPC {
     async getHeatMapTooltip() { return null; },
     async getActiveCalendarEvent() { return null; },
     async exportWeeklyReportPDF() {},
+    async getTasks() { return []; },
+    async createTask(title: string, priority: 'low' | 'medium' | 'high') {
+      return { id: 'stub', title, priority, completed: false, xpAwarded: 0, order: 0 };
+    },
+    async updateTask(_id: string, updates: Partial<TaskInfo>) { return { id: _id, title: '', priority: 'low' as const, completed: false, xpAwarded: 0, order: 0, ...updates }; },
+    async deleteTask() {},
+    async completeTask() { return { xpAmount: 0 }; },
+    async reorderTasks() {},
+    async getTotalXP() { return 0; },
+    async getBadges() { return []; },
   };
 }
