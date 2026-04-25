@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage.js';
 import HeatMapPage from './pages/HeatMapPage.js';
 import TasksPage from './pages/TasksPage.js';
 import SettingsPage from './pages/SettingsPage.js';
+import CalendarPage from './pages/CalendarPage.js';
 import type { AppSettings } from './ipc.js';
 import { t, type Language } from './i18n/translations.js';
 import { loadSettings, saveSettings } from './utils/settingsStore.js';
@@ -158,12 +159,7 @@ export default function App(): React.ReactElement {
             <p style={{ color: '#64748b', marginTop: 16 }}>Weekly report view coming soon.</p>
           </div>
         )}
-        {activeTab === 'calendar' && (
-          <div>
-            <h2 style={{ fontFamily: 'Inter', fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em' }}>{t(lang, 'calendar')}</h2>
-            <p style={{ color: '#64748b', marginTop: 16 }}>Calendar integration view coming soon.</p>
-          </div>
-        )}
+        {activeTab === 'calendar' && <CalendarPage lang={lang} />}
         {activeTab === 'settings' && <SettingsPage onSettingsChange={handleSettingsChange} currentSettings={settings} lang={lang} />}
       </main>
     </div>

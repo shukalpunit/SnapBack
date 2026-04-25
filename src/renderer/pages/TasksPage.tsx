@@ -21,6 +21,8 @@ export default function TasksPage({ lang = 'en' }: TasksPageProps): React.ReactE
   const [newTitle, setNewTitle] = useState('');
   const [newPriority, setNewPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [badgeNotification, setBadgeNotification] = useState<string | null>(null);
+  const [filterPriority, setFilterPriority] = useState<'all' | 'low' | 'medium' | 'high'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'incomplete' | 'completed'>('all');
 
   const refresh = useCallback(async () => {
     const ipc = getIPC();
@@ -53,8 +55,16 @@ export default function TasksPage({ lang = 'en' }: TasksPageProps): React.ReactE
     await refresh();
   }, [refresh]);
 
-  const incompleteTasks = tasks.filter((t) => !t.completed);
-  const completedTasks = tasks.filter((t) => t.completed);
+  const filtered = tasks.filter((t) => {
+    if (filterPriority !== 'all' && t.priority !== filterPriority) return false;
+    if (filterStatus === 'incomplete' && t.completed) return false;
+    if (filterStatus === 'completed' && !t.completed) return false;
+    return true;
+  });
+  const incompleteTasks = filtered.filter((t) => !t.completed);
+  const completedTasks = filtered.filter((t) => t.completed);
+  const allIncompleteTasks = tasks.filter((t) => !t.completed);
+  const allCompletedTasks = tasks.filter((t) => t.completed);
 
   return (
     <div>
@@ -76,6 +86,58 @@ export default function TasksPage({ lang = 'en' }: TasksPageProps): React.ReactE
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
         {/* Task List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Filter Bar */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+            {/* Priority Filter */}
+            <div style={{ display: 'flex', gap: 4 }}>
+              {(['all', 'high', 'medium', 'low'] as const).map((p) => {
+                const isActive = filterPriority === p;
+                const colors: Record<string, string> = { all: '#a78bfa', high: '#cebdff', medium: '#dbc839', low: '#948e9d' };
+                const color = colors[p]!;
+                return (
+                  <button key={p} onClick={() => setFilterPriority(p)}
+                    style={{
+                      padding: '6px 14px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+                      border: isActive ? `1px solid ${color}` : '1px solid #2B2930',
+                      background: isActive ? `${color}15` : 'transparent',
+                      color: isActive ? color : '#64748b',
+                      transition: 'all 0.15s',
+                    }}>
+                    {p === 'all' ? 'All' : p}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ width: 1, height: 20, background: '#2B2930', margin: '0 4px' }} />
+
+            {/* Status Filter */}
+            <div style={{ display: 'flex', gap: 4 }}>
+              {(['all', 'incomplete', 'completed'] as const).map((s) => {
+                const isActive = filterStatus === s;
+                return (
+                  <button key={s} onClick={() => setFilterStatus(s)}
+                    style={{
+                      padding: '6px 14px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer',
+                      border: isActive ? '1px solid #a78bfa' : '1px solid #2B2930',
+                      background: isActive ? 'rgba(167,139,250,0.1)' : 'transparent',
+                      color: isActive ? '#a78bfa' : '#64748b',
+                      transition: 'all 0.15s',
+                    }}>
+                    {s === 'all' ? 'All' : s === 'incomplete' ? 'Active' : 'Done'}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Count indicator */}
+            <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: "'JetBrains Mono'", color: '#64748b' }}>
+              {filtered.length} of {tasks.length} tasks
+            </span>
+          </div>
+
           {/* Add Task */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <input
@@ -154,6 +216,11 @@ export default function TasksPage({ lang = 'en' }: TasksPageProps): React.ReactE
           ))}
 
           {tasks.length === 0 && <p style={{ color: '#64748b', textAlign: 'center', marginTop: 40 }}>{t(lang, 'noDataYet')}</p>}
+          {tasks.length > 0 && filtered.length === 0 && (
+            <p style={{ color: '#64748b', textAlign: 'center', marginTop: 40 }}>
+              No tasks match the current filter.
+            </p>
+          )}
         </div>
 
         {/* Stats Sidebar */}
@@ -163,11 +230,11 @@ export default function TasksPage({ lang = 'en' }: TasksPageProps): React.ReactE
             <h2 style={LABEL}>{t(lang, 'dailyFocusOutput')}</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
               <div style={{ padding: 16, background: '#0A0B1A', borderRadius: 8 }}>
-                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 28, fontWeight: 500, color: '#cebdff' }}>{completedTasks.length.toString().padStart(2, '0')}</div>
+                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 28, fontWeight: 500, color: '#cebdff' }}>{allCompletedTasks.length.toString().padStart(2, '0')}</div>
                 <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', fontWeight: 600, marginTop: 4 }}>{t(lang, 'completed')}</div>
               </div>
               <div style={{ padding: 16, background: '#0A0B1A', borderRadius: 8 }}>
-                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 28, fontWeight: 500, color: '#dbc839' }}>{incompleteTasks.length.toString().padStart(2, '0')}</div>
+                <div style={{ fontFamily: "'JetBrains Mono'", fontSize: 28, fontWeight: 500, color: '#dbc839' }}>{allIncompleteTasks.length.toString().padStart(2, '0')}</div>
                 <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', fontWeight: 600, marginTop: 4 }}>{t(lang, 'remaining')}</div>
               </div>
             </div>

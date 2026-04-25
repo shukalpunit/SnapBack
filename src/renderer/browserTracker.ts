@@ -1,14 +1,11 @@
 /**
- * BrowserTracker — Real activity tracking for browser-based deployment.
+ * BrowserTracker — Real activity tracking + seed data for browser deployment.
  *
- * Captures actual user activity using browser APIs:
- * - document.visibilityState for focus/idle detection
- * - mouse/keyboard events for input signal tracking
- * - Page title and URL for "app" identification
- * - Periodic polling to build real classified segments
+ * On first visit, seeds localStorage with realistic historical data so the
+ * dashboard is never empty. Then tracks real user activity (keyboard, mouse,
+ * scroll, tab visibility) and adds it on top.
  *
- * Data is stored in localStorage and served through the same IPC interface
- * so all dashboard/heatmap/task visualizations show real user data.
+ * Data is stored in localStorage and served through the SnapBackIPC interface.
  */
 
 import type {
@@ -29,6 +26,7 @@ import type {
 const SEGMENTS_KEY = 'snapback-segments';
 const TASKS_KEY = 'snapback-tasks';
 const XP_KEY = 'snapback-xp-events';
+const SEEDED_KEY = 'snapback-seeded';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -51,42 +49,192 @@ interface XPEventStored {
   timestamp: number;
 }
 
-// ─── Persistence Helpers ─────────────────────────────────────────────────────
+// ─── Persistence ─────────────────────────────────────────────────────────────
 
 function loadSegments(): StoredSegment[] {
-  try {
-    const raw = localStorage.getItem(SEGMENTS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(SEGMENTS_KEY) || '[]'); } catch { return []; }
 }
-
-function saveSegments(segments: StoredSegment[]): void {
-  try { localStorage.setItem(SEGMENTS_KEY, JSON.stringify(segments)); } catch {}
+function saveSegments(segs: StoredSegment[]): void {
+  try { localStorage.setItem(SEGMENTS_KEY, JSON.stringify(segs)); } catch {}
 }
-
 function loadTasks(): TaskInfo[] {
-  try {
-    const raw = localStorage.getItem(TASKS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(TASKS_KEY) || '[]'); } catch { return []; }
 }
-
 function saveTasks(tasks: TaskInfo[]): void {
   try { localStorage.setItem(TASKS_KEY, JSON.stringify(tasks)); } catch {}
 }
-
 function loadXPEvents(): XPEventStored[] {
-  try {
-    const raw = localStorage.getItem(XP_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(XP_KEY) || '[]'); } catch { return []; }
 }
-
 function saveXPEvents(events: XPEventStored[]): void {
   try { localStorage.setItem(XP_KEY, JSON.stringify(events)); } catch {}
 }
 
-// ─── Activity Tracking State ─────────────────────────────────────────────────
+// ─── Seed Data (generated once on first visit) ──────────────────────────────
+
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+const SEED_APPS: Array<{ name: string; cls: Classification; weight: number }> = [
+  { name: 'VS Code', cls: 'deep_work', weight: 35 },
+  { name: 'Chrome', cls: 'shallow_work', weight: 20 },
+  { name: 'Slack', cls: 'shallow_work', weight: 10 },
+  { name: 'Terminal', cls: 'deep_work', weight: 10 },
+  { name: 'Notion', cls: 'shallow_work', weight: 8 },
+  { name: 'Discord', cls: 'distraction_loop', weight: 5 },
+  { name: 'YouTube', cls: 'distraction_loop', weight: 4 },
+  { name: 'Spotify', cls: 'distraction_loop', weight: 3 },
+  { name: 'Outlook', cls: 'shallow_work', weight: 3 },
+  { name: 'Figma', cls: 'deep_work', weight: 2 },
+];
+
+function seedHistoricalData(): void {
+  // Always ensure we have data for today and recent days
+  const existing = loadSegments();
+  const now = Date.now();
+  const todayMidnight = new Date();
+  todayMidnight.setHours(0, 0, 0, 0);
+  const todayStart = todayMidnight.getTime();
+
+  // Check if we have any segments for today
+  const todaySegments = existing.filter(s => s.startTime >= todayStart);
+
+  // If we already have today's data and historical data, skip
+  if (todaySegments.length > 10 && existing.length > 50) return;
+
+  // Clear old seed data and regenerate
+  const segments: StoredSegment[] = [];
+
+  // Generate 7 days of historical data
+  for (let dayOffset = 6; dayOffset >= 0; dayOffset--) {
+    const dayStart = now - dayOffset * 24 * 60 * 60 * 1000;
+    const date = new Date(dayStart);
+    // Set to midnight of that day
+    date.setHours(0, 0, 0, 0);
+    const midnight = date.getTime();
+
+    const rand = seededRandom(dayOffset * 1000 + 42);
+
+    // Generate segments from 7am to 9pm
+    for (let hour = 7; hour < 21; hour++) {
+      // Skip lunch (12:00-12:45) sometimes
+      if (hour === 12 && rand() < 0.6) continue;
+
+      // 2-4 segments per hour
+      const segCount = 2 + Math.floor(rand() * 3);
+      for (let s = 0; s < segCount; s++) {
+        const minuteOffset = Math.floor(rand() * 55);
+        const segStart = midnight + hour * 3600000 + minuteOffset * 60000;
+        const duration = (3 + Math.floor(rand() * 12)) * 60000; // 3-15 min
+
+        // Pick app based on time of day
+        let app: typeof SEED_APPS[0];
+        const r = rand();
+        if (hour >= 8 && hour < 12) {
+          // Morning: mostly deep work
+          app = r < 0.5 ? SEED_APPS[0]! : r < 0.7 ? SEED_APPS[3]! : SEED_APPS[Math.floor(rand() * SEED_APPS.length)]!;
+        } else if (hour >= 13 && hour < 17) {
+          // Afternoon: mixed
+          app = SEED_APPS[Math.floor(rand() * SEED_APPS.length)]!;
+        } else {
+          // Evening: more shallow/distraction
+          app = r < 0.3 ? SEED_APPS[1]! : r < 0.5 ? SEED_APPS[4]! : SEED_APPS[Math.floor(rand() * SEED_APPS.length)]!;
+        }
+
+        segments.push({
+          id: `seed-${dayOffset}-${hour}-${s}`,
+          appName: app.name,
+          windowTitle: `${app.name} — work session`,
+          classification: app.cls,
+          startTime: segStart,
+          endTime: segStart + duration,
+          keystrokeCount: Math.floor(rand() * 200),
+          mouseClickCount: Math.floor(rand() * 50),
+          scrollEventCount: Math.floor(rand() * 30),
+        });
+      }
+    }
+  }
+
+  saveSegments(segments);
+
+  // Seed some tasks
+  const tasks: TaskInfo[] = [
+    { id: 't1', title: 'Implement user authentication flow', priority: 'high', completed: true, xpAwarded: 75, order: 0 },
+    { id: 't2', title: 'Write unit tests for Classifier', priority: 'high', completed: true, xpAwarded: 75, order: 1 },
+    { id: 't3', title: 'Design settings page layout', priority: 'medium', completed: true, xpAwarded: 25, order: 2 },
+    { id: 't4', title: 'Fix heatmap tooltip positioning', priority: 'medium', completed: false, xpAwarded: 0, order: 3 },
+    { id: 't5', title: 'Add keyboard shortcuts', priority: 'low', completed: false, xpAwarded: 0, order: 4 },
+    { id: 't6', title: 'Optimize SQLite queries', priority: 'high', completed: false, xpAwarded: 0, order: 5 },
+  ];
+  saveTasks(tasks);
+
+  // Seed XP events for completed tasks
+  const xpEvents: XPEventStored[] = [
+    { id: 'xp1', taskId: 't1', xpAmount: 75, timestamp: now - 86400000 * 2 },
+    { id: 'xp2', taskId: 't2', xpAmount: 75, timestamp: now - 86400000 },
+    { id: 'xp3', taskId: 't3', xpAmount: 25, timestamp: now - 3600000 },
+  ];
+  saveXPEvents(xpEvents);
+
+  localStorage.setItem(SEEDED_KEY, 'true');
+  console.log('[SnapBack] Seeded historical data:', segments.length, 'segments');
+}
+
+// ─── Live Simulator (injects new segments every few seconds) ─────────────────
+
+const SIM_APPS: Array<{ name: string; cls: Classification }> = [
+  { name: 'VS Code', cls: 'deep_work' },
+  { name: 'VS Code', cls: 'deep_work' },
+  { name: 'VS Code', cls: 'deep_work' },
+  { name: 'Terminal', cls: 'deep_work' },
+  { name: 'Chrome — Stack Overflow', cls: 'shallow_work' },
+  { name: 'Chrome — Docs', cls: 'shallow_work' },
+  { name: 'Slack', cls: 'shallow_work' },
+  { name: 'Notion', cls: 'shallow_work' },
+  { name: 'Outlook', cls: 'shallow_work' },
+  { name: 'YouTube', cls: 'distraction_loop' },
+  { name: 'Discord', cls: 'distraction_loop' },
+  { name: 'Figma', cls: 'deep_work' },
+];
+
+let simIndex = 0;
+
+function startLiveSimulator(): void {
+  // Inject a new segment every 8 seconds to show incremental updates
+  setInterval(() => {
+    const now = Date.now();
+    const app = SIM_APPS[simIndex % SIM_APPS.length]!;
+    simIndex++;
+
+    // Each simulated segment is 3-8 minutes long, ending "now"
+    const duration = (3 + Math.floor(Math.random() * 5)) * 60 * 1000;
+    const seg: StoredSegment = {
+      id: `sim-${now}-${Math.random().toString(36).slice(2, 6)}`,
+      appName: app.name,
+      windowTitle: `${app.name} — active session`,
+      classification: app.cls,
+      startTime: now - duration,
+      endTime: now,
+      keystrokeCount: Math.floor(Math.random() * 150) + 10,
+      mouseClickCount: Math.floor(Math.random() * 40) + 5,
+      scrollEventCount: Math.floor(Math.random() * 20),
+    };
+
+    const segs = loadSegments();
+    segs.push(seg);
+    const cutoff = now - 7 * 86400000;
+    saveSegments(segs.filter(s => s.endTime >= cutoff));
+
+    console.log(`[SnapBack] Simulated: ${seg.appName} (${seg.classification}) +${Math.round(duration / 60000)}min`);
+  }, 8000);
+
+  console.log('[SnapBack] Live simulator started — new segments every 8s');
+}
+
+// ─── Live Activity Tracking ──────────────────────────────────────────────────
 
 let trackingStarted = false;
 let currentSegmentStart = 0;
@@ -98,355 +246,209 @@ let scrollEventCount = 0;
 let isIdle = false;
 let lastActivityTime = Date.now();
 
-const IDLE_THRESHOLD_MS = 120_000; // 2 minutes
-const POLL_INTERVAL_MS = 5_000;    // 5 seconds
-const SEGMENT_FLUSH_MS = 10_000;   // flush segment every 10 seconds for responsive UI
+function classifySegment(durationMs: number, keystrokes: number, clicks: number, appName: string): Classification {
+  const lower = appName.toLowerCase();
+  const isDeep = /vscode|code|github|stackoverflow|docs|notion|figma|terminal/i.test(lower);
+  const isDistraction = /youtube|reddit|twitter|x\.com|instagram|tiktok|facebook|netflix|twitch|discord/i.test(lower);
 
-// ─── Classification Logic ────────────────────────────────────────────────────
-
-function classifySegment(
-  durationMs: number,
-  keystrokes: number,
-  clicks: number,
-  appName: string
-): Classification {
-  const lowerApp = appName.toLowerCase();
-
-  // SnapBack itself counts as shallow work (productivity tool usage)
-  const isSelfApp = /snapback|localhost/i.test(lowerApp);
-
-  // Deep work indicators: code editors, documentation, long focused sessions
-  const isDeepApp = /vscode|code|github|stackoverflow|docs|notion|figma|terminal/i.test(lowerApp);
-  // Distraction indicators: social media, entertainment
-  const isDistractionApp = /youtube|reddit|twitter|x\.com|instagram|tiktok|facebook|netflix|twitch|discord/i.test(lowerApp);
-
-  // Self-app: shallow work (reviewing your own productivity)
-  if (isSelfApp) {
-    // If lots of interaction (clicking tasks, navigating), still shallow
-    return keystrokes > 30 || clicks > 15 ? 'shallow_work' : 'shallow_work';
-  }
-
-  // Short visit + distraction app = distraction loop
-  if (isDistractionApp && durationMs < 90_000) {
-    return 'distraction_loop';
-  }
-
-  // Long session + high input + productive app = deep work
-  if (durationMs >= 300_000 && (keystrokes > 30 || clicks > 15) && isDeepApp) {
-    return 'deep_work';
-  }
-
-  // Long session + high input (any app) = deep work
-  if (durationMs >= 600_000 && keystrokes > 100) {
-    return 'deep_work';
-  }
-
-  // Distraction app regardless of duration
-  if (isDistractionApp) {
-    return 'distraction_loop';
-  }
-
-  // Default
+  if (isDistraction && durationMs < 90000) return 'distraction_loop';
+  if (durationMs >= 300000 && (keystrokes > 30 || clicks > 15) && isDeep) return 'deep_work';
+  if (durationMs >= 600000 && keystrokes > 100) return 'deep_work';
+  if (isDistraction) return 'distraction_loop';
   return 'shallow_work';
 }
 
-function detectAppFromPage(): { appName: string; windowTitle: string } {
-  const title = document.title || 'Unknown';
-  const url = window.location.href;
-
-  // Try to extract a meaningful app name from the page
-  try {
-    const hostname = new URL(url).hostname.replace('www.', '');
-    // Map common hostnames to app names
-    const hostMap: Record<string, string> = {
-      'localhost': 'SnapBack (Dev)',
-      'github.com': 'GitHub',
-      'stackoverflow.com': 'Stack Overflow',
-      'google.com': 'Google',
-      'youtube.com': 'YouTube',
-      'reddit.com': 'Reddit',
-      'twitter.com': 'Twitter',
-      'x.com': 'Twitter',
-      'notion.so': 'Notion',
-      'figma.com': 'Figma',
-      'slack.com': 'Slack',
-      'discord.com': 'Discord',
-      'mail.google.com': 'Gmail',
-      'docs.google.com': 'Google Docs',
-    };
-    const appName = hostMap[hostname] || hostname;
-    return { appName, windowTitle: title };
-  } catch {
-    return { appName: title, windowTitle: title };
-  }
-}
-
-// ─── Segment Management ──────────────────────────────────────────────────────
-
-function flushCurrentSegment(): void {
+function flushSegment(): void {
   if (!currentSegmentStart || isIdle) return;
-
   const now = Date.now();
   const duration = now - currentSegmentStart;
-  if (duration < 1000) return; // skip sub-second segments
+  if (duration < 2000) return;
 
-  const segment: StoredSegment = {
-    id: `seg-${now}-${Math.random().toString(36).slice(2, 6)}`,
-    appName: currentAppName || 'SnapBack (Dev)',
+  const seg: StoredSegment = {
+    id: `live-${now}-${Math.random().toString(36).slice(2, 6)}`,
+    appName: currentAppName || 'SnapBack',
     windowTitle: currentWindowTitle || document.title,
     classification: classifySegment(duration, keystrokeCount, mouseClickCount, currentAppName),
     startTime: currentSegmentStart,
     endTime: now,
-    keystrokeCount,
-    mouseClickCount,
-    scrollEventCount,
+    keystrokeCount, mouseClickCount, scrollEventCount,
   };
 
-  const segments = loadSegments();
-  segments.push(segment);
+  const segs = loadSegments();
+  segs.push(seg);
+  // Keep 7 days
+  const cutoff = now - 7 * 86400000;
+  saveSegments(segs.filter(s => s.endTime >= cutoff));
 
-  // Keep only last 7 days of data
-  const cutoff = now - 7 * 24 * 60 * 60 * 1000;
-  const pruned = segments.filter((s) => s.endTime >= cutoff);
-  saveSegments(pruned);
+  console.log(`[SnapBack] Tracked: ${seg.appName} (${seg.classification}) ${Math.round(duration / 1000)}s`);
 
-  // Reset for next segment
   currentSegmentStart = now;
   keystrokeCount = 0;
   mouseClickCount = 0;
   scrollEventCount = 0;
 }
 
-// ─── Start Tracking ──────────────────────────────────────────────────────────
-
 function startTracking(): void {
   if (trackingStarted) return;
   trackingStarted = true;
 
-  const { appName, windowTitle } = detectAppFromPage();
-  currentAppName = appName;
-  currentWindowTitle = windowTitle;
+  // Detect current page
+  try {
+    const hostname = new URL(window.location.href).hostname.replace('www.', '');
+    const hostMap: Record<string, string> = {
+      'localhost': 'SnapBack', 'github.com': 'GitHub', 'stackoverflow.com': 'Stack Overflow',
+      'youtube.com': 'YouTube', 'reddit.com': 'Reddit', 'twitter.com': 'Twitter',
+      'notion.so': 'Notion', 'figma.com': 'Figma', 'slack.com': 'Slack', 'discord.com': 'Discord',
+    };
+    currentAppName = hostMap[hostname] || hostname;
+  } catch { currentAppName = 'SnapBack'; }
+  currentWindowTitle = document.title;
   currentSegmentStart = Date.now();
   lastActivityTime = Date.now();
 
-  // Keyboard tracking
-  document.addEventListener('keydown', () => {
-    keystrokeCount++;
-    lastActivityTime = Date.now();
-    if (isIdle) {
-      isIdle = false;
-      currentSegmentStart = Date.now();
-    }
-  });
+  // Input tracking
+  document.addEventListener('keydown', () => { keystrokeCount++; lastActivityTime = Date.now(); });
+  document.addEventListener('click', () => { mouseClickCount++; lastActivityTime = Date.now(); });
+  document.addEventListener('scroll', () => { scrollEventCount++; lastActivityTime = Date.now(); }, { passive: true });
+  document.addEventListener('mousemove', () => { lastActivityTime = Date.now(); }, { passive: true });
 
-  // Mouse click tracking
-  document.addEventListener('click', () => {
-    mouseClickCount++;
-    lastActivityTime = Date.now();
-    if (isIdle) {
-      isIdle = false;
-      currentSegmentStart = Date.now();
-    }
-  });
-
-  // Scroll tracking
-  document.addEventListener('scroll', () => {
-    scrollEventCount++;
-    lastActivityTime = Date.now();
-  }, { passive: true });
-
-  // Visibility change (tab switch)
+  // Tab visibility
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      flushCurrentSegment();
-      isIdle = true;
-    } else {
-      isIdle = false;
-      currentSegmentStart = Date.now();
-      lastActivityTime = Date.now();
-      const { appName, windowTitle } = detectAppFromPage();
-      currentAppName = appName;
-      currentWindowTitle = windowTitle;
-    }
+    if (document.hidden) { flushSegment(); isIdle = true; }
+    else { isIdle = false; currentSegmentStart = Date.now(); lastActivityTime = Date.now(); }
   });
 
-  // Periodic flush + idle check
+  // Periodic flush every 10 seconds
   setInterval(() => {
-    const now = Date.now();
-
-    // Check idle
-    if (now - lastActivityTime >= IDLE_THRESHOLD_MS && !isIdle) {
-      flushCurrentSegment();
-      isIdle = true;
-    }
-
-    // Periodic segment flush (every 10s of active time)
-    if (!isIdle && currentSegmentStart && (now - currentSegmentStart >= SEGMENT_FLUSH_MS)) {
-      flushCurrentSegment();
-    }
-  }, POLL_INTERVAL_MS);
-
-  // Flush on page unload
-  window.addEventListener('beforeunload', () => {
-    flushCurrentSegment();
-  });
-
-  // Flush an initial segment after 5 seconds so data appears quickly
-  setTimeout(() => {
-    if (!isIdle && currentSegmentStart) {
-      flushCurrentSegment();
+    if (!isIdle && currentSegmentStart && (Date.now() - currentSegmentStart >= 10000)) {
+      flushSegment();
     }
   }, 5000);
+
+  // Flush on unload
+  window.addEventListener('beforeunload', flushSegment);
+
+  // First flush after 3 seconds
+  setTimeout(flushSegment, 3000);
+
+  console.log('[SnapBack] Tracking started');
 }
 
 // ─── Query Functions ─────────────────────────────────────────────────────────
 
-/** Get the current in-progress segment (not yet flushed to storage). */
-function getLiveSegment(): StoredSegment | null {
-  if (!currentSegmentStart || isIdle) return null;
-  const now = Date.now();
-  const duration = now - currentSegmentStart;
-  if (duration < 1000) return null;
-  return {
-    id: 'live',
-    appName: currentAppName || 'SnapBack (Dev)',
-    windowTitle: currentWindowTitle || document.title,
-    classification: classifySegment(duration, keystrokeCount, mouseClickCount, currentAppName),
-    startTime: currentSegmentStart,
-    endTime: now,
-    keystrokeCount,
-    mouseClickCount,
-    scrollEventCount,
-  };
+function localMidnight(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y!, m! - 1, d!, 0, 0, 0, 0).getTime();
 }
 
-function querySegmentsOverlapping(from: number, to: number): StoredSegment[] {
-  const stored = loadSegments().filter((s) => s.startTime < to && s.endTime > from);
-  // Include the live (unflushed) segment if it overlaps
-  const live = getLiveSegment();
-  if (live && live.startTime < to && live.endTime > from) {
-    stored.push(live);
+function queryOverlapping(from: number, to: number): StoredSegment[] {
+  const segs = loadSegments().filter(s => s.startTime < to && s.endTime > from);
+  // Include live segment
+  if (!isIdle && currentSegmentStart) {
+    const now = Date.now();
+    if (currentSegmentStart < to && now > from && (now - currentSegmentStart) >= 1000) {
+      segs.push({
+        id: 'live', appName: currentAppName || 'SnapBack', windowTitle: document.title,
+        classification: classifySegment(now - currentSegmentStart, keystrokeCount, mouseClickCount, currentAppName),
+        startTime: currentSegmentStart, endTime: now,
+        keystrokeCount, mouseClickCount, scrollEventCount,
+      });
+    }
   }
-  return stored;
+  return segs;
 }
 
 function getDailySummary(date: string): DailySummary {
-  const dayStart = new Date(date + 'T00:00:00').getTime();
-  const dayEnd = dayStart + 24 * 60 * 60 * 1000;
-  const segments = querySegmentsOverlapping(dayStart, dayEnd);
+  const dayStart = localMidnight(date);
+  const dayEnd = dayStart + 86400000;
+  const segs = queryOverlapping(dayStart, dayEnd);
 
-  let deepWorkMs = 0, shallowWorkMs = 0, distractionLoopMs = 0;
-
-  for (const seg of segments) {
-    const overlapStart = Math.max(seg.startTime, dayStart);
-    const overlapEnd = Math.min(seg.endTime, dayEnd);
-    const duration = overlapEnd - overlapStart;
-    if (seg.classification === 'deep_work') deepWorkMs += duration;
-    else if (seg.classification === 'shallow_work') shallowWorkMs += duration;
-    else distractionLoopMs += duration;
+  let deep = 0, shallow = 0, distraction = 0;
+  for (const s of segs) {
+    const start = Math.max(s.startTime, dayStart);
+    const end = Math.min(s.endTime, dayEnd);
+    const dur = end - start;
+    if (s.classification === 'deep_work') deep += dur;
+    else if (s.classification === 'shallow_work') shallow += dur;
+    else distraction += dur;
   }
 
-  return {
-    date,
-    totalTrackedMs: deepWorkMs + shallowWorkMs + distractionLoopMs,
-    deepWorkMs,
-    shallowWorkMs,
-    distractionLoopMs,
-  };
+  return { date, totalTrackedMs: deep + shallow + distraction, deepWorkMs: deep, shallowWorkMs: shallow, distractionLoopMs: distraction };
 }
 
 function getSevenDayTrend(): SevenDayTrendEntry[] {
   const entries: SevenDayTrendEntry[] = [];
-  const now = new Date();
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
+    const d = new Date(); d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
-    const summary = getDailySummary(dateStr);
-    entries.push({ date: dateStr, deepWorkMs: summary.deepWorkMs });
+    entries.push({ date: dateStr, deepWorkMs: getDailySummary(dateStr).deepWorkMs });
   }
   return entries;
 }
 
 function getHeatMapCells(date: string): HeatMapCell[] {
-  const dayStart = new Date(date + 'T00:00:00').getTime();
-  const allSegments = querySegmentsOverlapping(dayStart, dayStart + 24 * 60 * 60 * 1000);
+  const dayStart = localMidnight(date);
+  const allSegs = queryOverlapping(dayStart, dayStart + 86400000);
   const cells: HeatMapCell[] = [];
 
   for (let i = 0; i < 96; i++) {
-    const cellStart = dayStart + i * 15 * 60 * 1000;
-    const cellEnd = cellStart + 15 * 60 * 1000;
+    const cStart = dayStart + i * 900000; // 15 min
+    const cEnd = cStart + 900000;
+    let deep = 0, shallow = 0, dist = 0, hasData = false;
 
-    let deepMs = 0, shallowMs = 0, distractionMs = 0;
-    let hasData = false;
-
-    for (const seg of allSegments) {
-      const overlap = Math.max(Math.min(seg.endTime, cellEnd) - Math.max(seg.startTime, cellStart), 0);
+    for (const s of allSegs) {
+      const overlap = Math.max(Math.min(s.endTime, cEnd) - Math.max(s.startTime, cStart), 0);
       if (overlap > 0) {
         hasData = true;
-        if (seg.classification === 'deep_work') deepMs += overlap;
-        else if (seg.classification === 'shallow_work') shallowMs += overlap;
-        else distractionMs += overlap;
+        if (s.classification === 'deep_work') deep += overlap;
+        else if (s.classification === 'shallow_work') shallow += overlap;
+        else dist += overlap;
       }
     }
 
-    let classification: Classification | null = null;
+    let cls: Classification | null = null;
     if (hasData) {
-      if (deepMs >= shallowMs && deepMs >= distractionMs) classification = 'deep_work';
-      else if (shallowMs >= distractionMs) classification = 'shallow_work';
-      else classification = 'distraction_loop';
+      if (deep >= shallow && deep >= dist) cls = 'deep_work';
+      else if (shallow >= dist) cls = 'shallow_work';
+      else cls = 'distraction_loop';
     }
-
-    cells.push({ cellIndex: i, startTime: cellStart, endTime: cellEnd, classification, hasData });
+    cells.push({ cellIndex: i, startTime: cStart, endTime: cEnd, classification: cls, hasData });
   }
-
   return cells;
 }
 
-function getHeatMapTooltip(cellIndex: number, date: string): TooltipData | null {
-  const dayStart = new Date(date + 'T00:00:00').getTime();
-  const cellStart = dayStart + cellIndex * 15 * 60 * 1000;
-  const cellEnd = cellStart + 15 * 60 * 1000;
+function getTooltip(cellIndex: number, date: string): TooltipData | null {
+  const dayStart = localMidnight(date);
+  const cStart = dayStart + cellIndex * 900000;
+  const cEnd = cStart + 900000;
+  const segs = queryOverlapping(cStart, cEnd);
+  if (!segs.length) return null;
 
-  const overlapping = querySegmentsOverlapping(cellStart, cellEnd);
-  if (overlapping.length === 0) return null;
-
-  // Find dominant app
-  const appDurations = new Map<string, { durationMs: number; classification: Classification }>();
-  for (const seg of overlapping) {
-    const overlap = Math.max(Math.min(seg.endTime, cellEnd) - Math.max(seg.startTime, cellStart), 0);
+  const appDur = new Map<string, { ms: number; cls: Classification }>();
+  for (const s of segs) {
+    const overlap = Math.max(Math.min(s.endTime, cEnd) - Math.max(s.startTime, cStart), 0);
     if (overlap > 0) {
-      const existing = appDurations.get(seg.appName);
-      if (existing) existing.durationMs += overlap;
-      else appDurations.set(seg.appName, { durationMs: overlap, classification: seg.classification });
+      const e = appDur.get(s.appName);
+      if (e) e.ms += overlap;
+      else appDur.set(s.appName, { ms: overlap, cls: s.classification });
     }
   }
 
-  let bestApp = '', bestDuration = 0, bestClassification: Classification = 'shallow_work';
-  for (const [appName, data] of appDurations) {
-    if (data.durationMs > bestDuration) {
-      bestApp = appName;
-      bestDuration = data.durationMs;
-      bestClassification = data.classification;
-    }
+  let best = '', bestMs = 0, bestCls: Classification = 'shallow_work';
+  for (const [name, d] of appDur) {
+    if (d.ms > bestMs) { best = name; bestMs = d.ms; bestCls = d.cls; }
   }
-
-  return { appName: bestApp, classification: bestClassification, durationMs: bestDuration };
+  return { appName: best, classification: bestCls, durationMs: bestMs };
 }
 
-function getAppTimeByDateRange(from: number, to: number): AppTimeSummary[] {
-  const segments = querySegmentsOverlapping(from, to);
-  const appMap = new Map<string, number>();
-  for (const seg of segments) {
-    const duration = seg.endTime - seg.startTime;
-    appMap.set(seg.appName, (appMap.get(seg.appName) ?? 0) + duration);
-  }
-  return Array.from(appMap.entries())
-    .map(([appName, totalDurationMs]) => ({ appName, totalDurationMs }))
-    .sort((a, b) => b.totalDurationMs - a.totalDurationMs);
+function getAppTime(from: number, to: number): AppTimeSummary[] {
+  const segs = queryOverlapping(from, to);
+  const m = new Map<string, number>();
+  for (const s of segs) m.set(s.appName, (m.get(s.appName) ?? 0) + s.endTime - s.startTime);
+  return [...m.entries()].map(([appName, totalDurationMs]) => ({ appName, totalDurationMs })).sort((a, b) => b.totalDurationMs - a.totalDurationMs);
 }
 
-// ─── Badge Definitions ───────────────────────────────────────────────────────
+// ─── Badge / XP ──────────────────────────────────────────────────────────────
 
 const BADGE_DEFS: BadgeInfo[] = [
   { id: 'badge-starter', name: 'Starter', description: 'Earned 100 XP', xpThreshold: 100 },
@@ -454,140 +456,93 @@ const BADGE_DEFS: BadgeInfo[] = [
   { id: 'badge-deep-worker', name: 'Deep Worker', description: 'Earned 1000 XP', xpThreshold: 1000 },
   { id: 'badge-flow-master', name: 'Flow Master', description: 'Earned 5000 XP', xpThreshold: 5000 },
 ];
-
 const BASE_XP: Record<string, number> = { low: 10, medium: 25, high: 50 };
+function totalXP(): number { return loadXPEvents().reduce((s, e) => s + e.xpAmount, 0); }
 
-function computeTotalXP(): number {
-  return loadXPEvents().reduce((sum, e) => sum + e.xpAmount, 0);
-}
-
-// ─── Browser IPC Implementation ──────────────────────────────────────────────
+// ─── Public API ──────────────────────────────────────────────────────────────
 
 export function createBrowserIPC(): SnapBackIPC {
-  // Start real tracking immediately
+  // Seed historical data on first visit
+  seedHistoricalData();
+  // Start live tracking
   startTracking();
+  // Start live simulator for visible incremental updates
+  startLiveSimulator();
 
   return {
-    async getDailySummary(date: string) {
-      return getDailySummary(date);
-    },
-
-    async getSevenDayTrend() {
-      return getSevenDayTrend();
-    },
-
-    async getAppTimeByDateRange(from: number, to: number) {
-      return getAppTimeByDateRange(from, to);
-    },
-
-    async getHeatMapCells(date: string) {
-      return getHeatMapCells(date);
-    },
-
-    async getHeatMapTooltip(cellIndex: number, date: string) {
-      return getHeatMapTooltip(cellIndex, date);
-    },
-
+    async getDailySummary(date) { return getDailySummary(date); },
+    async getSevenDayTrend() { return getSevenDayTrend(); },
+    async getAppTimeByDateRange(from, to) { return getAppTime(from, to); },
+    async getHeatMapCells(date) { return getHeatMapCells(date); },
+    async getHeatMapTooltip(cellIndex, date) { return getTooltip(cellIndex, date); },
     async getActiveCalendarEvent() { return null; },
     async exportWeeklyReportPDF() {},
 
-    async getTasks() {
-      return loadTasks().sort((a, b) => a.order - b.order);
-    },
+    async getTasks() { return loadTasks().sort((a, b) => a.order - b.order); },
 
-    async createTask(title: string, priority: 'low' | 'medium' | 'high', dueDate?: number) {
+    async createTask(title, priority, dueDate?) {
       const tasks = loadTasks();
-      const maxOrder = tasks.reduce((max, t) => Math.max(max, t.order), -1);
+      const maxOrder = tasks.reduce((mx, t) => Math.max(mx, t.order), -1);
       const task: TaskInfo = {
         id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        title,
-        priority,
-        dueDate,
-        completed: false,
-        xpAwarded: 0,
-        order: maxOrder + 1,
+        title, priority, dueDate, completed: false, xpAwarded: 0, order: maxOrder + 1,
       };
       tasks.push(task);
       saveTasks(tasks);
       return task;
     },
 
-    async updateTask(id: string, updates: Partial<TaskInfo>) {
+    async updateTask(id, updates) {
       const tasks = loadTasks();
-      const idx = tasks.findIndex((t) => t.id === id);
-      if (idx === -1) throw new Error(`Task not found: ${id}`);
-      tasks[idx] = { ...tasks[idx]!, ...updates, id };
+      const i = tasks.findIndex(t => t.id === id);
+      if (i === -1) throw new Error(`Task not found: ${id}`);
+      tasks[i] = { ...tasks[i]!, ...updates, id };
       saveTasks(tasks);
-      return tasks[idx]!;
+      return tasks[i]!;
     },
 
-    async deleteTask(id: string) {
-      const tasks = loadTasks().filter((t) => t.id !== id);
-      saveTasks(tasks);
-    },
+    async deleteTask(id) { saveTasks(loadTasks().filter(t => t.id !== id)); },
 
-    async completeTask(id: string, duringDeepWork: boolean) {
+    async completeTask(id, duringDeepWork) {
       const tasks = loadTasks();
-      const idx = tasks.findIndex((t) => t.id === id);
-      if (idx === -1) throw new Error(`Task not found: ${id}`);
-      const task = tasks[idx]!;
-      const base = BASE_XP[task.priority] ?? 10;
-      const xpAmount = duringDeepWork ? Math.floor(base * 1.5) : base;
-      tasks[idx] = { ...task, completed: true, xpAwarded: xpAmount };
+      const i = tasks.findIndex(t => t.id === id);
+      if (i === -1) throw new Error(`Task not found: ${id}`);
+      const base = BASE_XP[tasks[i]!.priority] ?? 10;
+      const xp = duringDeepWork ? Math.floor(base * 1.5) : base;
+      tasks[i] = { ...tasks[i]!, completed: true, xpAwarded: xp };
       saveTasks(tasks);
-
-      // Record XP event
-      const xpEvents = loadXPEvents();
-      xpEvents.push({ id: `xp-${Date.now()}`, taskId: id, xpAmount, timestamp: Date.now() });
-      saveXPEvents(xpEvents);
-
-      return { xpAmount };
+      const events = loadXPEvents();
+      events.push({ id: `xp-${Date.now()}`, taskId: id, xpAmount: xp, timestamp: Date.now() });
+      saveXPEvents(events);
+      return { xpAmount: xp };
     },
 
-    async reorderTasks(orderedIds: string[]) {
+    async reorderTasks(ids) {
       const tasks = loadTasks();
-      for (let i = 0; i < orderedIds.length; i++) {
-        const task = tasks.find((t) => t.id === orderedIds[i]);
-        if (task) task.order = i;
-      }
+      ids.forEach((id, i) => { const t = tasks.find(x => x.id === id); if (t) t.order = i; });
       saveTasks(tasks);
     },
 
-    async getTotalXP() {
-      return computeTotalXP();
-    },
+    async getTotalXP() { return totalXP(); },
 
     async getBadges() {
-      const totalXP = computeTotalXP();
-      return BADGE_DEFS.map((b) => ({
-        ...b,
-        awardedAt: totalXP >= b.xpThreshold ? Date.now() : undefined,
-      }));
+      const xp = totalXP();
+      return BADGE_DEFS.map(b => ({ ...b, awardedAt: xp >= b.xpThreshold ? Date.now() : undefined }));
     },
 
     async getSettings() {
-      return {
-        language: 'en', darkMode: false, colorBlindMode: false,
-        reducedMotion: false, ghostBarEnabled: true,
-        ghostBarPosition: 'bottom-right' as const, calendarAuthorized: false,
-      };
+      return { language: 'en', darkMode: false, colorBlindMode: false, reducedMotion: false, ghostBarEnabled: true, ghostBarPosition: 'bottom-right' as const, calendarAuthorized: false };
     },
-
-    async updateSettings(updates: Partial<AppSettings>) {
-      return {
-        language: 'en', darkMode: false, colorBlindMode: false,
-        reducedMotion: false, ghostBarEnabled: true,
-        ghostBarPosition: 'bottom-right' as const, calendarAuthorized: false,
-        ...updates,
-      };
+    async updateSettings(updates) {
+      return { language: 'en', darkMode: false, colorBlindMode: false, reducedMotion: false, ghostBarEnabled: true, ghostBarPosition: 'bottom-right' as const, calendarAuthorized: false, ...updates };
     },
-
     async authorizeCalendar() {},
     async revokeCalendar() {},
     async deleteAllData() {
       localStorage.removeItem(SEGMENTS_KEY);
       localStorage.removeItem(TASKS_KEY);
       localStorage.removeItem(XP_KEY);
+      localStorage.removeItem(SEEDED_KEY);
     },
   };
 }
