@@ -142,7 +142,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
     - **Property 17: Task CRUD Round-Trip**
     - **Validates: Requirements 7.1, 7.5**
 
-- [ ] 9. Calendar Sync
+- [x] 9. Calendar Sync
   - Implement `src/main/calendar/CalendarSync.ts` implementing `ICalendarSync`
   - Implement OAuth 2.0 authorization flow using Google Calendar REST API; store tokens in OS keychain via `keytar` (never in Local Store)
   - Implement `fetchEvents` for current + next 7 days; upsert results into Local Store
@@ -153,19 +153,19 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
   - Add Google Calendar API endpoint to Network Guard allowlist on authorization; remove on revocation
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-  - [ ]* 9.1 Write property test for calendar event active lookup
+  - [x]* 9.1 Write property test for calendar event active lookup
     - **Property 20: Calendar Event Active Lookup**
     - **Validates: Requirements 8.3**
 
-  - [ ]* 9.2 Write property test for calendar revocation completeness
+  - [x]* 9.2 Write property test for calendar revocation completeness
     - **Property 21: Calendar Revocation Completeness**
     - **Validates: Requirements 8.5**
 
-  - [ ]* 9.3 Write integration tests for Calendar Sync
+  - [x]* 9.3 Write integration tests for Calendar Sync
     - Integration test with mocked Google Calendar API for initial fetch (Requirement 8.1)
     - Example test for API error fallback (Requirement 8.4)
 
-- [ ] 10. Checkpoint — all services complete
+- [x] 10. Checkpoint — all services complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 11. Dashboard and reporting
