@@ -212,7 +212,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
     - **Property 8: Heat Map Tooltip Data Completeness**
     - **Validates: Requirements 3.3**
 
-- [ ] 13. React UI — Dashboard and Heat Map views
+- [-] 13. React UI — Dashboard and Heat Map views
   - Implement `src/renderer/pages/DashboardPage.tsx`: display daily summary, 7-day trend chart, classification breakdown, active calendar event name
   - Implement `src/renderer/pages/HeatMapPage.tsx`: render 96-cell time grid, color cells green/yellow/red per classification, show tooltip on cell click, support day navigation
   - Implement color blind mode: replace green/yellow/red with alternative palette + distinct icon patterns (both color AND icon present, never color alone)
