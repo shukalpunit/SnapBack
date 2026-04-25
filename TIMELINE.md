@@ -22,3 +22,6 @@
 - [2026-04-24 17:03:50 MST] Recommended seven Kiro skills suited to the SnapBack codebase (SQL review, security/privacy audit, property test generator, Electron IPC review, interface consistency, commit message, SQLite migration); no files changed.
 
 - [2026-04-24 17:03:51 MST] Created three Kiro skills in .kiro/skills/: security-privacy.md (fileMatch, network/data/secrets rules), commit-message.md (manual, conventional commit format), interface-consistency.md (fileMatch, I* interface contract enforcement).
+
+- [2026-04-24 17:03:52 MST] Provided summary of all implemented Kiro steering (3 files) and skills (3 files); no files changed.
+- [2026-04-24 17:17:51 MST] Implemented DashboardService (src/main/dashboard/DashboardService.ts) with app time aggregation, daily summary, 7-day trend, weekly report generation, and PDF export; 11 tests (Property 3, 5, 15, 16 + 7 unit tests); full suite at 138 tests passing.

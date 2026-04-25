@@ -168,7 +168,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
 - [x] 10. Checkpoint — all services complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Dashboard and reporting
+- [x] 11. Dashboard and reporting
   - Implement `src/main/dashboard/DashboardService.ts` with query methods for the renderer
   - Implement `getAppTimeByDateRange(from, to)`: aggregate `segments` by `app_name`, sort by total duration descending
   - Implement `getDailySummary(date)`: return total tracked time + per-classification hours
@@ -178,23 +178,23 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
   - Subscribe to `store.updated` event and push refresh to renderer via IPC within 5 seconds
   - _Requirements: 1.6, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-  - [ ]* 11.1 Write property test for dashboard sort order
+  - [x]* 11.1 Write property test for dashboard sort order
     - **Property 3: Dashboard Sort Order**
     - **Validates: Requirements 1.6**
 
-  - [ ]* 11.2 Write property test for classification proportions sum to total
+  - [x]* 11.2 Write property test for classification proportions sum to total
     - **Property 5: Classification Proportions Sum to Total**
     - **Validates: Requirements 2.6, 6.1**
 
-  - [ ]* 11.3 Write property test for 7-day trend chart cardinality
+  - [x]* 11.3 Write property test for 7-day trend chart cardinality
     - **Property 15: 7-Day Trend Chart Cardinality**
     - **Validates: Requirements 6.2**
 
-  - [ ]* 11.4 Write property test for weekly report completeness
+  - [x]* 11.4 Write property test for weekly report completeness
     - **Property 16: Weekly Report Completeness**
     - **Validates: Requirements 6.3**
 
-  - [ ]* 11.5 Write unit tests for Dashboard
+  - [x]* 11.5 Write unit tests for Dashboard
     - Example test: PDF export to local path (Requirement 6.4)
     - Example test: ≤5 second refresh latency (Requirement 6.5)
 
