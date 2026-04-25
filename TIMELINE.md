@@ -16,3 +16,9 @@
 - [2026-04-24 16:55:50 MST] Implemented PredictionEngine (src/main/prediction/PredictionEngine.ts) with feature extraction, rule-based pattern detection, per-pattern threshold management, rebuildFromStore, and toast notifications; 19 tests (Property 12, 13, 14 + 13 unit tests); full suite at 92 tests passing.
 - [2026-04-24 16:59:52 MST] Implemented TaskManagerService (src/main/tasks/TaskManagerService.ts) with task CRUD, XP awards (10/25/50 base, 1.5x deep work multiplier), idempotent badge threshold detection, and reordering; 18 tests (Property 17, 18, 19 + 13 unit tests); full suite at 110 tests passing.
 - [2026-04-24 17:03:48 MST] Implemented CalendarSync (src/main/calendar/CalendarSync.ts) with OAuth via injectable keychain, event fetching with API error fallback, active event lookup, 30s revocation deadline, and NetworkGuard integration; 17 tests (Property 20, 21 + 14 unit tests); all services checkpoint complete; full suite at 127 tests passing.
+
+- [2026-04-24 17:03:49 MST] Created three steering files in .kiro/steering/: product.md (product summary), tech.md (tech stack and build commands), structure.md (project organization and conventions).
+
+- [2026-04-24 17:03:50 MST] Recommended seven Kiro skills suited to the SnapBack codebase (SQL review, security/privacy audit, property test generator, Electron IPC review, interface consistency, commit message, SQLite migration); no files changed.
+
+- [2026-04-24 17:03:51 MST] Created three Kiro skills in .kiro/skills/: security-privacy.md (fileMatch, network/data/secrets rules), commit-message.md (manual, conventional commit format), interface-consistency.md (fileMatch, I* interface contract enforcement).
