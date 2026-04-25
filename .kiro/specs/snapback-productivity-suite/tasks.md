@@ -241,7 +241,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
     - Example test: dark mode theme switch latency ≤500 ms (Requirement 10.2)
     - Example test: reduced motion flag disables animations (Requirement 10.4)
 
-- [ ] 16. Wire all subsystems together in main process
+- [x] 16. Wire all subsystems together in main process
   - Implement `src/main/index.ts`: initialize Local Store → Network Guard → Event Bus → Activity Tracker → Classifier → Prediction Engine → Productivity Ghost → Task Manager Service → Calendar Sync → Dashboard Service
   - Subscribe Classifier to `activity.tick` events; on segment flush, write to Local Store and emit `store.updated`
   - Subscribe Prediction Engine to `activity.tick`; on `intervention.trigger`, send IPC notification to renderer with `patternDescription` as substring of notification text
