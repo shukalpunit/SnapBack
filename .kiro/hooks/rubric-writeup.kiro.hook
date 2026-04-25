@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "Rubric Alignment Writeup",
+  "description": "After each agent stop, evaluates whether the completed work aligns with the challenge rubric (Potential Value, Implementation, Quality & Design) and appends a short writeup to TIMELINE.md documenting how the development workflow matched the rubric criteria.",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Review what was just accomplished in this agent session. Evaluate it against the challenge rubric below and, if the work aligns with one or more rubric categories, append a short timestamped rubric-alignment entry to TIMELINE.md. Use the format: `- [TIMESTAMP MST] **Rubric:** ...`. Keep it to 1-3 sentences. If the work doesn't meaningfully align with any rubric category, skip the writeup.\n\n## Challenge Rubric (30 points max)\n\n**Potential Value (10 points):** Market uniqueness, intuitive UI, scalability, and accessibility. Is there a clear \"need\" for this in the real world?\n\n**Implementation (10 points):** Effective use of Kiro features. Evidence of strategic decision-making and experimentation within the AI IDE workflow.\n\n**Quality & Design (10 points):** Creativity, originality, and \"delight.\" Use of unique datasets, responsible design choices, and polished aesthetics.\n\nOnly write about categories that genuinely apply to the work just completed. Be specific about what was done and which rubric criteria it satisfies."
+  },
+  "workspaceFolderName": "KiroSpark",
+  "shortName": "rubric-writeup"
+}

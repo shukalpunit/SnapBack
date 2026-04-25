@@ -249,7 +249,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
   - Implement `PRAGMA integrity_check` on startup; prompt user to restore or start fresh on failure
   - _Requirements: 1.1, 2.1, 5.2, 5.3, 6.5_
 
-- [ ] 17. Smoke tests and integration tests
+- [x] 17. Smoke tests and integration tests
   - Write smoke test: verify SQLCipher AES-256 is active (database file not readable as plaintext)
   - Write smoke test: verify ≥5 languages available in settings
   - Write smoke test: verify no outbound network calls during a full tracked session without Calendar Sync
@@ -257,7 +257,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
   - Write end-to-end integration test: tracker → classifier → store → dashboard query, verifying data flows correctly through all components
   - _Requirements: 9.1, 9.2, 10.1_
 
-- [ ] 18. Final checkpoint — all tests pass
+- [x] 18. Final checkpoint — all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
