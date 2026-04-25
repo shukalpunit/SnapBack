@@ -121,7 +121,7 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
     - Example test: settings-disabled suppression (Requirement 4.5)
     - Example test: reduced motion static display (Requirement 4.6)
 
-- [ ] 8. Task Manager Service
+- [x] 8. Task Manager Service
   - Implement `src/main/tasks/TaskManagerService.ts` implementing `ITaskManagerService`
   - Implement `createTask`, `updateTask`, `deleteTask`, `reorderTasks` with Local Store persistence
   - Implement `completeTask`: compute XP (10/25/50 base × 1.5 if `duringDeepWork`; medium rounds to 37), write `XPEvent` to Local Store
@@ -130,15 +130,15 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
   - Implement `getBadges()` returning all badges with `awarded_at` set for earned ones
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-  - [ ]* 8.1 Write property test for XP award correctness
+  - [x]* 8.1 Write property test for XP award correctness
     - **Property 18: XP Award Correctness**
     - **Validates: Requirements 7.2, 7.4**
 
-  - [ ]* 8.2 Write property test for badge award threshold crossing
+  - [x]* 8.2 Write property test for badge award threshold crossing
     - **Property 19: Badge Award Threshold Crossing**
     - **Validates: Requirements 7.3**
 
-  - [ ]* 8.3 Write property test for task CRUD round-trip
+  - [x]* 8.3 Write property test for task CRUD round-trip
     - **Property 17: Task CRUD Round-Trip**
     - **Validates: Requirements 7.1, 7.5**
 
