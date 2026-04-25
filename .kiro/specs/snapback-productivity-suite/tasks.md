@@ -198,17 +198,17 @@ Implement SnapBack as an Electron + React + TypeScript desktop application. Task
     - Example test: PDF export to local path (Requirement 6.4)
     - Example test: ≤5 second refresh latency (Requirement 6.5)
 
-- [ ] 12. Heat Map data model
+- [x] 12. Heat Map data model
   - Implement `src/main/heatmap/HeatMapService.ts`
   - Implement `getHeatMapCells(date)`: produce exactly 96 cells (one per 15-minute block), each cell's classification = dominant classification by total duration in that window
   - Implement `getTooltipData(cellIndex, date)`: return `{ appName, classification, duration }` for cells with at least one segment; all fields non-null, `duration > 0`
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-  - [ ]* 12.1 Write property test for heat map grid completeness
+  - [x]* 12.1 Write property test for heat map grid completeness
     - **Property 7: Heat Map Grid Completeness**
     - **Validates: Requirements 3.1, 3.2**
 
-  - [ ]* 12.2 Write property test for heat map tooltip data completeness
+  - [x]* 12.2 Write property test for heat map tooltip data completeness
     - **Property 8: Heat Map Tooltip Data Completeness**
     - **Validates: Requirements 3.3**
 
