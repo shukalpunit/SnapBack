@@ -9,20 +9,23 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { getIPC, type TaskInfo, type BadgeInfo } from '../ipc.js';
+import { t, type Language } from '../i18n/translations.js';
 
-const PRIORITY_LABELS: Record<string, string> = {
-  low: '🟢 Low',
-  medium: '🟡 Medium',
-  high: '🔴 High',
-};
+interface TasksPageProps {
+  lang?: Language;
+}
 
-const PRIORITY_XP: Record<string, string> = {
-  low: '10 XP',
-  medium: '25 XP',
-  high: '50 XP',
-};
+function getPriorityLabel(priority: string, lang: Language): string {
+  const icons: Record<string, string> = { low: '🟢', medium: '🟡', high: '🔴' };
+  const labels: Record<string, string> = {
+    low: t('priorityLow', lang),
+    medium: t('priorityMedium', lang),
+    high: t('priorityHigh', lang),
+  };
+  return `${icons[priority] ?? ''} ${labels[priority] ?? priority}`;
+}
 
-export default function TasksPage(): React.ReactElement {
+export default function TasksPage({ lang = 'en' }: TasksPageProps): React.ReactElement {
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
   const [totalXP, setTotalXP] = useState(0);
   const [badges, setBadges] = useState<BadgeInfo[]>([]);
@@ -148,7 +151,7 @@ export default function TasksPage(): React.ReactElement {
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="New task…"
+          placeholder={t('newTaskPlaceholder', lang)}
           aria-label="Task title"
           style={{ flex: 1, minWidth: '200px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
         />
@@ -158,9 +161,9 @@ export default function TasksPage(): React.ReactElement {
           aria-label="Task priority"
           style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
         >
-          <option value="low">Low (10 XP)</option>
-          <option value="medium">Medium (25 XP)</option>
-          <option value="high">High (50 XP)</option>
+          <option value="low">{t('priorityLow', lang)} (10 XP)</option>
+          <option value="medium">{t('priorityMedium', lang)} (25 XP)</option>
+          <option value="high">{t('priorityHigh', lang)} (50 XP)</option>
         </select>
         <input
           type="date"
@@ -175,7 +178,7 @@ export default function TasksPage(): React.ReactElement {
           aria-label="Add task"
           style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', backgroundColor: '#2563eb', color: 'white', cursor: 'pointer' }}
         >
-          Add
+          {t('addTask', lang)}
         </button>
       </div>
 
@@ -231,7 +234,8 @@ export default function TasksPage(): React.ReactElement {
 
             {/* Priority badge */}
             <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-              {PRIORITY_LABELS[task.priority]} ({PRIORITY_XP[task.priority]})
+              {getPriorityLabel(task.priority, lang)} (
+              {task.priority === 'low' ? '10' : task.priority === 'medium' ? '25' : '50'} XP)
             </span>
 
             {/* Due date */}
@@ -262,7 +266,7 @@ export default function TasksPage(): React.ReactElement {
 
       {tasks.length === 0 && (
         <p style={{ color: '#94a3b8', textAlign: 'center', marginTop: '2rem' }}>
-          No tasks yet. Add one above to start earning XP!
+          {t('noTasksYet', lang)}
         </p>
       )}
     </div>
